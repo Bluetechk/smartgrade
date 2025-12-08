@@ -20,7 +20,6 @@ interface StudentForm {
   class_id: string;
   department_id: string;
   date_of_birth: string;
-  password: string;
   photo_url: string;
   phone_number: string;
 }
@@ -30,7 +29,6 @@ const initialFormState: StudentForm = {
   class_id: "",
   department_id: "",
   date_of_birth: "",
-  password: "",
   photo_url: "",
   phone_number: "",
 };
@@ -83,10 +81,10 @@ export const StudentManagementTab = () => {
   };
 
   const handleAddStudent = async () => {
-    if (!newStudent.password || newStudent.password.length < 6) {
+    if (!newStudent.full_name) {
       toast({
         title: "Error",
-        description: "Password must be at least 6 characters",
+        description: "Full name is required",
         variant: "destructive",
       });
       return;
@@ -96,49 +94,68 @@ export const StudentManagementTab = () => {
     try {
       const selectedClass = classes?.find(c => c.id === newStudent.class_id);
       
-      // Convert photo to base64 if selected
-      let photoBase64 = "";
-      let photoContentType = "";
-      console.log("Add file input:", fileInputRef.current);
-      console.log("Add file input files:", fileInputRef.current?.files);
-      console.log("Add file input file[0]:", fileInputRef.current?.files?.[0]);
-      
+      // Handle photo upload if selected
+      let photoUrl = null;
       if (fileInputRef.current?.files?.[0]) {
         const file = fileInputRef.current.files[0];
-        console.log("Uploading photo for add:", file.name, file.type, file.size);
-        photoContentType = file.type;
-        const arrayBuffer = await file.arrayBuffer();
-        const bytes = new Uint8Array(arrayBuffer);
-        let binary = '';
-        for (let i = 0; i < bytes.byteLength; i++) {
-          binary += String.fromCharCode(bytes[i]);
+        const fileName = `student-${nextStudentId}-${Date.now()}`;
+        const filePath = `student-photos/${fileName}`;
+        
+        console.log("Uploading photo to:", filePath, "File:", file.name, file.type, file.size);
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("student-photos")
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error("Upload error:", uploadError);
+          throw new Error(`Photo upload failed: ${uploadError.message}`);
         }
-        photoBase64 = btoa(binary);
-        console.log("Photo base64 length:", photoBase64.length);
+        
+        console.log("Upload successful:", uploadData);
+        
+        // Get the public URL - Supabase returns a properly formatted URL
+        const { data: urlData } = supabase.storage
+          .from("student-photos")
+          .getPublicUrl(filePath);
+        
+        photoUrl = urlData.publicUrl;
+        console.log("Generated photo URL:", photoUrl);
+        
+        // Verify URL format
+        if (!photoUrl || !photoUrl.includes('supabase.co')) {
+          console.warn("Warning: Generated URL may be invalid:", photoUrl);
+        }
       }
 
-      console.log("Sending to edge function with photo:", !!photoBase64);
-      const { data, error } = await supabase.functions.invoke("create-student-account", {
-        body: {
+      console.log("Creating student with photo_url:", photoUrl);
+      
+      // Create student record directly in database
+      const { data: studentData, error: studentError } = await supabase
+        .from("students")
+        .insert({
           student_id: nextStudentId,
-          password: newStudent.password,
           full_name: newStudent.full_name,
           class_id: newStudent.class_id,
           department_id: selectedClass?.department_id || newStudent.department_id,
           date_of_birth: newStudent.date_of_birth || null,
           phone_number: newStudent.phone_number || null,
-          photo_base64: photoBase64,
-          photo_content_type: photoContentType,
-        },
-      });
+          photo_url: photoUrl,
+        })
+        .select()
+        .single();
 
-      console.log("Create student response:", data, error);
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      if (studentError) {
+        console.error("Student creation error:", studentError);
+        throw new Error(`Failed to create student: ${studentError.message}`);
+      }
+      
+      console.log("Student created successfully:", studentData);
+      console.log("Saved photo_url in database:", studentData.photo_url);
 
       toast({
         title: "Success",
-        description: "Student account created successfully",
+        description: `Student "${newStudent.full_name}" created successfully (ID: ${nextStudentId})`,
       });
 
       queryClient.invalidateQueries({ queryKey: ["students"] });
@@ -147,9 +164,10 @@ export const StudentManagementTab = () => {
       setPhotoPreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error: any) {
+      console.error("Error creating student:", error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to create student",
         variant: "destructive",
       });
     } finally {
@@ -158,74 +176,70 @@ export const StudentManagementTab = () => {
   };
 
   const handleEditClick = (student: any) => {
+    console.log("=== EDIT CLICK DEBUG ===");
+    console.log("Full student object:", student);
+    console.log("student.photo_url:", student.photo_url);
+    console.log("student.photo_url type:", typeof student.photo_url);
+    console.log("student.photo_url empty?", !student.photo_url);
+    
     setEditingStudentId(student.id);
     setEditingStudentIdString(student.student_id);
+    
+    const photoUrlToShow = student.photo_url || "";
+    console.log("Setting photo preview to:", photoUrlToShow);
+    
     setEditStudent({
       full_name: student.full_name,
       class_id: student.class_id,
       department_id: student.department_id,
       date_of_birth: student.date_of_birth || "",
-      password: "",
-      photo_url: student.photo_url || "",
+      photo_url: photoUrlToShow,
       phone_number: student.phone_number || "",
     });
-    setEditPhotoPreview(student.photo_url || null);
+    setEditPhotoPreview(photoUrlToShow);
     setIsEditDialogOpen(true);
   };
 
   const handleUpdateStudent = async () => {
     if (!editingStudentId) return;
 
-    // Validate password if provided
-    if (editStudent.password && editStudent.password.length < 6) {
-      toast({
-        title: "Error",
-        description: "Password must be at least 6 characters",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsCreating(true);
     try {
       const selectedClass = classes?.find(c => c.id === editStudent.class_id);
       
-      // Upload new photo if selected via edge function
+      // Handle new photo upload if selected
       let photoUrl = editStudent.photo_url;
-      console.log("Edit file input:", editFileInputRef.current);
-      console.log("Edit file input files:", editFileInputRef.current?.files);
-      console.log("Edit file input file[0]:", editFileInputRef.current?.files?.[0]);
+      console.log("Updating student, current photo_url:", photoUrl);
       
       if (editFileInputRef.current?.files?.[0]) {
         const file = editFileInputRef.current.files[0];
-        console.log("Uploading photo for edit:", file.name, file.type, file.size);
-        const arrayBuffer = await file.arrayBuffer();
-        const bytes = new Uint8Array(arrayBuffer);
-        let binary = '';
-        for (let i = 0; i < bytes.byteLength; i++) {
-          binary += String.fromCharCode(bytes[i]);
+        const fileName = `student-${editingStudentIdString}-${Date.now()}`;
+        const filePath = `student-photos/${fileName}`;
+        
+        console.log("Uploading new photo to:", filePath, "File:", file.name, file.type, file.size);
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("student-photos")
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error("Photo upload error:", uploadError);
+          throw new Error(`Photo upload failed: ${uploadError.message}`);
         }
-        const photoBase64 = btoa(binary);
-        console.log("Photo base64 length:", photoBase64.length);
         
-        const { data: photoData, error: photoError } = await supabase.functions.invoke(
-          "update-student-photo",
-          {
-            body: {
-              student_id: editingStudentIdString,
-              photo_base64: photoBase64,
-              photo_content_type: file.type,
-            },
-          }
-        );
+        console.log("Photo upload successful:", uploadData);
         
-        console.log("Photo upload response:", photoData, photoError);
-        if (photoError) throw photoError;
-        if (photoData?.error) throw new Error(photoData.error);
-        if (photoData?.photo_url) photoUrl = photoData.photo_url;
+        // Get the public URL
+        const { data: urlData } = supabase.storage
+          .from("student-photos")
+          .getPublicUrl(filePath);
+        photoUrl = urlData.publicUrl;
+        console.log("New photo URL:", photoUrl);
       }
 
-      // Update student record
+      console.log("Updating student with photo_url:", photoUrl);
+      
+      // Update student record directly in database
       const { error } = await supabase
         .from("students")
         .update({
@@ -238,23 +252,12 @@ export const StudentManagementTab = () => {
         })
         .eq("id", editingStudentId);
 
-      if (error) throw error;
-
-      // Update password if provided
-      if (editStudent.password) {
-        const { data: passwordData, error: passwordError } = await supabase.functions.invoke(
-          "update-student-password",
-          {
-            body: {
-              student_id: editingStudentId,
-              new_password: editStudent.password,
-            },
-          }
-        );
-
-        if (passwordError) throw passwordError;
-        if (passwordData?.error) throw new Error(passwordData.error);
+      if (error) {
+        console.error("Update error:", error);
+        throw new Error(`Failed to update student: ${error.message}`);
       }
+      
+      console.log("Student updated successfully");
 
       toast({
         title: "Success",
@@ -268,9 +271,10 @@ export const StudentManagementTab = () => {
       setEditPhotoPreview(null);
       if (editFileInputRef.current) editFileInputRef.current.value = "";
     } catch (error: any) {
+      console.error("Error updating student:", error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to update student",
         variant: "destructive",
       });
     } finally {
@@ -442,13 +446,13 @@ export const StudentManagementTab = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="password">Initial Password</Label>
+                <Label htmlFor="phone_number">Phone Number (Student/Parent)</Label>
                 <Input
-                  id="password"
-                  type="password"
-                  value={newStudent.password}
-                  onChange={(e) => setNewStudent({ ...newStudent, password: e.target.value })}
-                  placeholder="Min 6 characters"
+                  id="phone_number"
+                  type="tel"
+                  value={newStudent.phone_number}
+                  onChange={(e) => setNewStudent({ ...newStudent, phone_number: e.target.value })}
+                  placeholder="Enter phone number"
                 />
               </div>
               <Button onClick={handleAddStudent} className="w-full" disabled={isCreating}>
@@ -581,16 +585,6 @@ export const StudentManagementTab = () => {
                 value={editStudent.phone_number}
                 onChange={(e) => setEditStudent({ ...editStudent, phone_number: e.target.value })}
                 placeholder="Enter phone number"
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit_password">New Password (leave blank to keep current)</Label>
-              <Input
-                id="edit_password"
-                type="password"
-                value={editStudent.password}
-                onChange={(e) => setEditStudent({ ...editStudent, password: e.target.value })}
-                placeholder="Min 6 characters"
               />
             </div>
             <Button onClick={handleUpdateStudent} className="w-full" disabled={isCreating}>

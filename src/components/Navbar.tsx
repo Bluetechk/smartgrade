@@ -1,11 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { GraduationCap, LayoutDashboard, BookOpen, FileText, BarChart3 } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 
 const Navbar = () => {
   const location = useLocation();
   const { signOut } = useAuth();
+  const navigate = useNavigate();
 
   const navItems = [
     { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -23,7 +26,7 @@ const Navbar = () => {
             <span className="text-xl font-bold text-foreground">SmartGrade</span>
           </Link>
 
-          <div className="flex items-center gap-1">
+          <div className="hidden md:flex items-center gap-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
@@ -41,7 +44,25 @@ const Navbar = () => {
             })}
           </div>
 
-          <Button variant="outline" onClick={signOut}>Sign Out</Button>
+          <div className="flex items-center gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2">
+                  <Avatar className="w-8 h-8">
+                    <AvatarFallback className="bg-primary text-white">SG</AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent sideOffset={8}>
+                <DropdownMenuLabel>Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => { navigate('/admin'); }}>Admin Panel</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { navigate('/auth'); }}>Profile</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={signOut}>Sign Out</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
     </nav>

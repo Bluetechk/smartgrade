@@ -15,6 +15,7 @@ import { StudentManagementTab } from "@/components/StudentManagementTab";
 import { ClassManagementTab } from "@/components/ClassManagementTab";
 import { SubjectManagementTab } from "@/components/SubjectManagementTab";
 import { DepartmentManagementTab } from "@/components/DepartmentManagementTab";
+import AdminLayout from "@/components/AdminLayout";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -72,9 +73,9 @@ const Admin = () => {
 
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+    <AdminLayout>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
               <ArrowLeft className="h-5 w-5" />
@@ -83,9 +84,7 @@ const Admin = () => {
           </div>
           <Button variant="outline" onClick={signOut}>Sign Out</Button>
         </div>
-      </header>
 
-      <div className="container mx-auto px-4 py-8">
         <Tabs defaultValue="users" className="space-y-6">
           <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="users">
@@ -225,7 +224,7 @@ const Admin = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </AdminLayout>
   );
 };
 
