@@ -22,6 +22,14 @@ interface StudentForm {
   date_of_birth: string;
   photo_url: string;
   phone_number: string;
+  parent_name: string;
+  parent_number: string;
+  nationality: string;
+  country: string;
+  county: string;
+  tribe: string;
+  place_of_residence: string;
+  disability: string;
 }
 
 const initialFormState: StudentForm = {
@@ -31,6 +39,14 @@ const initialFormState: StudentForm = {
   date_of_birth: "",
   photo_url: "",
   phone_number: "",
+  parent_name: "",
+  parent_number: "",
+  nationality: "",
+  country: "",
+  county: "",
+  tribe: "",
+  place_of_residence: "",
+  disability: "",
 };
 
 const getNextStudentId = async (): Promise<string> => {
@@ -141,6 +157,14 @@ export const StudentManagementTab = () => {
           date_of_birth: newStudent.date_of_birth || null,
           phone_number: newStudent.phone_number || null,
           photo_url: photoUrl,
+          parent_name: newStudent.parent_name || null,
+          parent_number: newStudent.parent_number || null,
+          nationality: newStudent.nationality || null,
+          country: newStudent.country || null,
+          county: newStudent.county || null,
+          tribe: newStudent.tribe || null,
+          place_of_residence: newStudent.place_of_residence || null,
+          disability: newStudent.disability || null,
         })
         .select()
         .single();
@@ -195,6 +219,14 @@ export const StudentManagementTab = () => {
       date_of_birth: student.date_of_birth || "",
       photo_url: photoUrlToShow,
       phone_number: student.phone_number || "",
+      parent_name: student.parent_name || "",
+      parent_number: student.parent_number || "",
+      nationality: student.nationality || "",
+      country: student.country || "",
+      county: student.county || "",
+      tribe: student.tribe || "",
+      place_of_residence: student.place_of_residence || "",
+      disability: student.disability || "",
     });
     setEditPhotoPreview(photoUrlToShow);
     setIsEditDialogOpen(true);
@@ -249,6 +281,14 @@ export const StudentManagementTab = () => {
           date_of_birth: editStudent.date_of_birth || null,
           photo_url: photoUrl,
           phone_number: editStudent.phone_number || null,
+          parent_name: editStudent.parent_name || null,
+          parent_number: editStudent.parent_number || null,
+          nationality: editStudent.nationality || null,
+          country: editStudent.country || null,
+          county: editStudent.county || null,
+          tribe: editStudent.tribe || null,
+          place_of_residence: editStudent.place_of_residence || null,
+          disability: editStudent.disability || null,
         })
         .eq("id", editingStudentId);
 
@@ -383,7 +423,7 @@ export const StudentManagementTab = () => {
               Add Student
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Student</DialogTitle>
             </DialogHeader>
@@ -393,68 +433,153 @@ export const StudentManagementTab = () => {
                 onSelect={(e) => handlePhotoSelect(e, false)}
                 inputRef={fileInputRef}
               />
-              <div>
-                <Label htmlFor="next_student_id">Student ID</Label>
-                <Input
-                  id="next_student_id"
-                  value={nextStudentId}
-                  disabled
-                  className="bg-muted font-mono"
-                />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="next_student_id">Student ID</Label>
+                  <Input
+                    id="next_student_id"
+                    value={nextStudentId}
+                    disabled
+                    className="bg-muted font-mono"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="full_name">Full Name *</Label>
+                  <Input
+                    id="full_name"
+                    value={newStudent.full_name}
+                    onChange={(e) => setNewStudent({ ...newStudent, full_name: e.target.value })}
+                    placeholder="Enter full name"
+                    required
+                  />
+                </div>
               </div>
-              <div>
-                <Label htmlFor="full_name">Full Name</Label>
-                <Input
-                  id="full_name"
-                  value={newStudent.full_name}
-                  onChange={(e) => setNewStudent({ ...newStudent, full_name: e.target.value })}
-                  placeholder="Enter full name"
-                />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="class_id">Class *</Label>
+                  <Select value={newStudent.class_id} onValueChange={(value) => setNewStudent({ ...newStudent, class_id: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select class" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {classes?.map((cls) => (
+                        <SelectItem key={cls.id} value={cls.id}>
+                          {cls.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="date_of_birth">Date of Birth</Label>
+                  <Input
+                    id="date_of_birth"
+                    type="date"
+                    value={newStudent.date_of_birth}
+                    onChange={(e) => setNewStudent({ ...newStudent, date_of_birth: e.target.value })}
+                  />
+                </div>
               </div>
-              <div>
-                <Label htmlFor="class_id">Class</Label>
-                <Select value={newStudent.class_id} onValueChange={(value) => setNewStudent({ ...newStudent, class_id: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select class" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {classes?.map((cls) => (
-                      <SelectItem key={cls.id} value={cls.id}>
-                        {cls.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-semibold mb-3">Contact Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="phone_number">Student Phone Number</Label>
+                    <Input
+                      id="phone_number"
+                      type="tel"
+                      value={newStudent.phone_number}
+                      onChange={(e) => setNewStudent({ ...newStudent, phone_number: e.target.value })}
+                      placeholder="Enter phone number"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="parent_name">Parent/Guardian Name</Label>
+                    <Input
+                      id="parent_name"
+                      value={newStudent.parent_name}
+                      onChange={(e) => setNewStudent({ ...newStudent, parent_name: e.target.value })}
+                      placeholder="Enter parent/guardian name"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <Label htmlFor="parent_number">Parent/Guardian Phone Number</Label>
+                  <Input
+                    id="parent_number"
+                    type="tel"
+                    value={newStudent.parent_number}
+                    onChange={(e) => setNewStudent({ ...newStudent, parent_number: e.target.value })}
+                    placeholder="Enter parent/guardian phone number"
+                  />
+                </div>
               </div>
-              <div>
-                <Label htmlFor="date_of_birth">Date of Birth</Label>
-                <Input
-                  id="date_of_birth"
-                  type="date"
-                  value={newStudent.date_of_birth}
-                  onChange={(e) => setNewStudent({ ...newStudent, date_of_birth: e.target.value })}
-                />
+
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-semibold mb-3">Personal Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="nationality">Nationality</Label>
+                    <Input
+                      id="nationality"
+                      value={newStudent.nationality}
+                      onChange={(e) => setNewStudent({ ...newStudent, nationality: e.target.value })}
+                      placeholder="Enter nationality"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="country">Country</Label>
+                    <Input
+                      id="country"
+                      value={newStudent.country}
+                      onChange={(e) => setNewStudent({ ...newStudent, country: e.target.value })}
+                      placeholder="Enter country"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <Label htmlFor="county">County</Label>
+                    <Input
+                      id="county"
+                      value={newStudent.county}
+                      onChange={(e) => setNewStudent({ ...newStudent, county: e.target.value })}
+                      placeholder="Enter county"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="tribe">Tribe/Ethnicity</Label>
+                    <Input
+                      id="tribe"
+                      value={newStudent.tribe}
+                      onChange={(e) => setNewStudent({ ...newStudent, tribe: e.target.value })}
+                      placeholder="Enter tribe/ethnicity"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <Label htmlFor="place_of_residence">Place of Residence</Label>
+                  <Input
+                    id="place_of_residence"
+                    value={newStudent.place_of_residence}
+                    onChange={(e) => setNewStudent({ ...newStudent, place_of_residence: e.target.value })}
+                    placeholder="Enter place of residence/address"
+                  />
+                </div>
+                <div className="mt-4">
+                  <Label htmlFor="disability">Disability (if any)</Label>
+                  <Input
+                    id="disability"
+                    value={newStudent.disability}
+                    onChange={(e) => setNewStudent({ ...newStudent, disability: e.target.value })}
+                    placeholder="Enter disability information or leave blank if none"
+                  />
+                </div>
               </div>
-              <div>
-                <Label htmlFor="phone_number">Phone Number (Student/Parent)</Label>
-                <Input
-                  id="phone_number"
-                  type="tel"
-                  value={newStudent.phone_number}
-                  onChange={(e) => setNewStudent({ ...newStudent, phone_number: e.target.value })}
-                  placeholder="Enter phone number"
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone_number">Phone Number (Student/Parent)</Label>
-                <Input
-                  id="phone_number"
-                  type="tel"
-                  value={newStudent.phone_number}
-                  onChange={(e) => setNewStudent({ ...newStudent, phone_number: e.target.value })}
-                  placeholder="Enter phone number"
-                />
-              </div>
+
               <Button onClick={handleAddStudent} className="w-full" disabled={isCreating}>
                 {isCreating ? "Creating..." : "Add Student"}
               </Button>
@@ -524,7 +649,7 @@ export const StudentManagementTab = () => {
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Student</DialogTitle>
           </DialogHeader>
@@ -535,58 +660,153 @@ export const StudentManagementTab = () => {
               inputRef={editFileInputRef}
               isEdit
             />
-            <div>
-              <Label htmlFor="edit_full_name">Full Name</Label>
-              <Input
-                id="edit_full_name"
-                value={editStudent.full_name}
-                onChange={(e) => setEditStudent({ ...editStudent, full_name: e.target.value })}
-                placeholder="Enter full name"
-              />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit_student_id">Student ID</Label>
+                <Input
+                  id="edit_student_id"
+                  value={editingStudentIdString}
+                  disabled
+                  className="bg-muted font-mono"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit_full_name">Full Name *</Label>
+                <Input
+                  id="edit_full_name"
+                  value={editStudent.full_name}
+                  onChange={(e) => setEditStudent({ ...editStudent, full_name: e.target.value })}
+                  placeholder="Enter full name"
+                  required
+                />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="edit_student_id">Student ID</Label>
-              <Input
-                id="edit_student_id"
-                value={editingStudentIdString}
-                disabled
-                className="bg-muted"
-              />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit_class_id">Class *</Label>
+                <Select value={editStudent.class_id} onValueChange={(value) => setEditStudent({ ...editStudent, class_id: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select class" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classes?.map((cls) => (
+                      <SelectItem key={cls.id} value={cls.id}>
+                        {cls.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="edit_date_of_birth">Date of Birth</Label>
+                <Input
+                  id="edit_date_of_birth"
+                  type="date"
+                  value={editStudent.date_of_birth}
+                  onChange={(e) => setEditStudent({ ...editStudent, date_of_birth: e.target.value })}
+                />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="edit_class_id">Class</Label>
-              <Select value={editStudent.class_id} onValueChange={(value) => setEditStudent({ ...editStudent, class_id: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select class" />
-                </SelectTrigger>
-                <SelectContent>
-                  {classes?.map((cls) => (
-                    <SelectItem key={cls.id} value={cls.id}>
-                      {cls.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+            <div className="border-t pt-4">
+              <h3 className="text-sm font-semibold mb-3">Contact Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit_phone_number">Student Phone Number</Label>
+                  <Input
+                    id="edit_phone_number"
+                    type="tel"
+                    value={editStudent.phone_number}
+                    onChange={(e) => setEditStudent({ ...editStudent, phone_number: e.target.value })}
+                    placeholder="Enter phone number"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit_parent_name">Parent/Guardian Name</Label>
+                  <Input
+                    id="edit_parent_name"
+                    value={editStudent.parent_name}
+                    onChange={(e) => setEditStudent({ ...editStudent, parent_name: e.target.value })}
+                    placeholder="Enter parent/guardian name"
+                  />
+                </div>
+              </div>
+              <div className="mt-4">
+                <Label htmlFor="edit_parent_number">Parent/Guardian Phone Number</Label>
+                <Input
+                  id="edit_parent_number"
+                  type="tel"
+                  value={editStudent.parent_number}
+                  onChange={(e) => setEditStudent({ ...editStudent, parent_number: e.target.value })}
+                  placeholder="Enter parent/guardian phone number"
+                />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="edit_date_of_birth">Date of Birth</Label>
-              <Input
-                id="edit_date_of_birth"
-                type="date"
-                value={editStudent.date_of_birth}
-                onChange={(e) => setEditStudent({ ...editStudent, date_of_birth: e.target.value })}
-              />
+
+            <div className="border-t pt-4">
+              <h3 className="text-sm font-semibold mb-3">Personal Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit_nationality">Nationality</Label>
+                  <Input
+                    id="edit_nationality"
+                    value={editStudent.nationality}
+                    onChange={(e) => setEditStudent({ ...editStudent, nationality: e.target.value })}
+                    placeholder="Enter nationality"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit_country">Country</Label>
+                  <Input
+                    id="edit_country"
+                    value={editStudent.country}
+                    onChange={(e) => setEditStudent({ ...editStudent, country: e.target.value })}
+                    placeholder="Enter country"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="edit_county">County</Label>
+                  <Input
+                    id="edit_county"
+                    value={editStudent.county}
+                    onChange={(e) => setEditStudent({ ...editStudent, county: e.target.value })}
+                    placeholder="Enter county"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit_tribe">Tribe/Ethnicity</Label>
+                  <Input
+                    id="edit_tribe"
+                    value={editStudent.tribe}
+                    onChange={(e) => setEditStudent({ ...editStudent, tribe: e.target.value })}
+                    placeholder="Enter tribe/ethnicity"
+                  />
+                </div>
+              </div>
+              <div className="mt-4">
+                <Label htmlFor="edit_place_of_residence">Place of Residence</Label>
+                <Input
+                  id="edit_place_of_residence"
+                  value={editStudent.place_of_residence}
+                  onChange={(e) => setEditStudent({ ...editStudent, place_of_residence: e.target.value })}
+                  placeholder="Enter place of residence/address"
+                />
+              </div>
+              <div className="mt-4">
+                <Label htmlFor="edit_disability">Disability (if any)</Label>
+                <Input
+                  id="edit_disability"
+                  value={editStudent.disability}
+                  onChange={(e) => setEditStudent({ ...editStudent, disability: e.target.value })}
+                  placeholder="Enter disability information or leave blank if none"
+                />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="edit_phone_number">Phone Number (Student/Parent)</Label>
-              <Input
-                id="edit_phone_number"
-                type="tel"
-                value={editStudent.phone_number}
-                onChange={(e) => setEditStudent({ ...editStudent, phone_number: e.target.value })}
-                placeholder="Enter phone number"
-              />
-            </div>
+
             <Button onClick={handleUpdateStudent} className="w-full" disabled={isCreating}>
               {isCreating ? "Updating..." : "Update Student"}
             </Button>

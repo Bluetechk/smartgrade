@@ -1,11 +1,11 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import Hero from "@/components/Hero";
-import Features from "@/components/Features";
-import GradingShowcase from "@/components/GradingShowcase";
-import ReportPreview from "@/components/ReportPreview";
-import CallToAction from "@/components/CallToAction";
+import LandingNavbar from "@/components/LandingNavbar";
+import LandingHero from "@/components/LandingHero";
+import LandingFeatures from "@/components/LandingFeatures";
+import LandingTestimonials from "@/components/LandingTestimonials";
+import LandingFooter from "@/components/LandingFooter";
 
 const Index = () => {
   const { user } = useAuth();
@@ -16,13 +16,14 @@ const Index = () => {
       navigate("/dashboard");
     }
   }, [user, navigate]);
+  
   return (
     <div className="min-h-screen">
-      <Hero />
-      <Features />
-      <GradingShowcase />
-      <ReportPreview />
-      <CallToAction />
+      <LandingNavbar />
+      <LandingHero />
+      <LandingFeatures />
+      <LandingTestimonials />
+      <LandingFooter />
     </div>
   );
 };
