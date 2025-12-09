@@ -1,10 +1,13 @@
 import Navbar from "@/components/Navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, Award, AlertTriangle } from "lucide-react";
+import { TrendingUp, Award, AlertTriangle, Users, Building, School } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAnalytics, useTopStudents, useAtRiskStudents } from "@/hooks/useAnalytics";
+import { useAdminAnalytics } from "@/hooks/useAdminAnalytics";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 import { useState } from "react";
 
 const Analytics = () => {
@@ -13,6 +16,13 @@ const Analytics = () => {
   const { data: analyticsData, isLoading: analyticsLoading } = useAnalytics(selectedPeriod);
   const { data: topStudents = [], isLoading: topStudentsLoading } = useTopStudents(selectedPeriod);
   const { data: atRiskStudents = [], isLoading: atRiskLoading } = useAtRiskStudents(selectedPeriod);
+  const { data: adminAnalytics, isLoading: adminAnalyticsLoading } = useAdminAnalytics(selectedPeriod);
+
+  const adminColors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"];
+  const adminChartConfig = {
+    count: { label: "Count", color: "hsl(var(--chart-1))" },
+    averageScore: { label: "Average Score", color: "hsl(var(--chart-2))" },
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -206,6 +216,207 @@ const Analytics = () => {
             </CardContent>
           </Card>
         </div>
+
+      {/* Admin-wide analytics (moved from Admin panel) */}
+      <section className="mt-10 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold text-foreground">Institution Analytics</h2>
+            <p className="text-sm text-muted-foreground">Organization-wide counts and distributions</p>
+          </div>
+          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select Period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="p1">Period 1</SelectItem>
+              <SelectItem value="p2">Period 2</SelectItem>
+              <SelectItem value="p3">Period 3</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {adminAnalyticsLoading ? (
+            Array(4).fill(0).map((_, i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <Skeleton className="h-4 w-24" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-8 w-16" />
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{adminAnalytics?.totalStudents || 0}</div>
+                  <p className="text-xs text-muted-foreground">Across all classes</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Classes</CardTitle>
+                  <Building className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{adminAnalytics?.totalClasses || 0}</div>
+                  <p className="text-xs text-muted-foreground">Active classes</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Departments</CardTitle>
+                  <School className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{adminAnalytics?.totalDepartments || 0}</div>
+                  <p className="text-xs text-muted-foreground">Active departments</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Avg Performance</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{adminAnalytics?.averagePerformance || 0}%</div>
+                  <p className="text-xs text-muted-foreground">School-wide average</p>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Student Distribution by Class</CardTitle>
+              <CardDescription>Number of students in each class</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {adminAnalyticsLoading ? (
+                <Skeleton className="h-[300px] w-full" />
+              ) : adminAnalytics?.studentDistributionByClass?.length ? (
+                <ChartContainer config={adminChartConfig} className="h-[300px]">
+                  <PieChart>
+                    <Pie
+                      data={adminAnalytics.studentDistributionByClass.map((item) => ({ name: item.className, value: item.count }))}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      dataKey="value"
+                    >
+                      {adminAnalytics.studentDistributionByClass.map((_, index) => (
+                        <Cell key={`class-cell-${index}`} fill={adminColors[index % adminColors.length]} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                  </PieChart>
+                </ChartContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[300px] text-muted-foreground">No data available</div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Student Distribution by Department</CardTitle>
+              <CardDescription>Number of students in each department</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {adminAnalyticsLoading ? (
+                <Skeleton className="h-[300px] w-full" />
+              ) : adminAnalytics?.studentDistributionByDepartment?.length ? (
+                <ChartContainer config={adminChartConfig} className="h-[300px]">
+                  <PieChart>
+                    <Pie
+                      data={adminAnalytics.studentDistributionByDepartment.map((item) => ({ name: item.departmentName, value: item.count }))}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      dataKey="value"
+                    >
+                      {adminAnalytics.studentDistributionByDepartment.map((_, index) => (
+                        <Cell key={`dept-cell-${index}`} fill={adminColors[index % adminColors.length]} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                  </PieChart>
+                </ChartContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[300px] text-muted-foreground">No data available</div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Average Performance by Class</CardTitle>
+              <CardDescription>Average scores per class</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {adminAnalyticsLoading ? (
+                <Skeleton className="h-[300px] w-full" />
+              ) : adminAnalytics?.classPerformance?.length ? (
+                <ChartContainer config={adminChartConfig} className="h-[300px]">
+                  <BarChart data={adminAnalytics.classPerformance.map((item) => ({ name: item.className, averageScore: item.averageScore }))}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Legend />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="averageScore" name="Average Score" fill="#3b82f6" />
+                  </BarChart>
+                </ChartContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[300px] text-muted-foreground">No data available</div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Grade Distribution</CardTitle>
+              <CardDescription>Students distribution across grade ranges</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {adminAnalyticsLoading ? (
+                <Skeleton className="h-[300px] w-full" />
+              ) : adminAnalytics?.gradeDistribution?.length ? (
+                <ChartContainer config={adminChartConfig} className="h-[300px]">
+                  <BarChart data={adminAnalytics.gradeDistribution.map((item) => ({ name: item.gradeRange, students: item.count }))}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Legend />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="students" name="Students" fill="#10b981" />
+                  </BarChart>
+                </ChartContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[300px] text-muted-foreground">No data available</div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </section>
       </main>
     </div>
   );

@@ -33,8 +33,26 @@ const App = () => (
                 <Route element={<AuthProvider><Outlet /></AuthProvider>}>
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<Auth />} />
-                  <Route path="/dashboard" element={<ProtectedRoute><StatisticalDashboard /></ProtectedRoute>} />
-                  <Route path="/statistical" element={<ProtectedRoute><StatisticalDashboard /></ProtectedRoute>} />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <ProtectedRoute>
+                        <AdminLayout>
+                          <StatisticalDashboard embedded />
+                        </AdminLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/statistical"
+                    element={
+                      <ProtectedRoute>
+                        <AdminLayout>
+                          <StatisticalDashboard embedded />
+                        </AdminLayout>
+                      </ProtectedRoute>
+                    }
+                  />
                   <Route path="/gradebook" element={<ProtectedRoute><AdminLayout><Gradebook /></AdminLayout></ProtectedRoute>} />
                   <Route path="/reports" element={<ProtectedRoute><AdminLayout><Reports /></AdminLayout></ProtectedRoute>} />
                   <Route path="/analytics" element={<ProtectedRoute><AdminLayout><Analytics /></AdminLayout></ProtectedRoute>} />

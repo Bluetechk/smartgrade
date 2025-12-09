@@ -27,6 +27,43 @@ const Auth = () => {
     }
   }, [user, navigate]);
 
+  // Ensure profile and teacher role exist for staff users
+  const ensureProfileAndRole = async (userId: string, fullNameValue: string, emailValue: string) => {
+    // Create profile if missing
+    const { data: profileExists } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!profileExists) {
+      const { error: profileError } = await supabase.from("profiles").insert({
+        id: userId,
+        user_id: userId,
+        full_name: fullNameValue,
+        email: emailValue,
+        is_approved: false, // staff need admin approval
+      });
+      if (profileError) throw profileError;
+    }
+
+    // Assign teacher role if missing
+    const { data: roleExists } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "teacher")
+      .maybeSingle();
+
+    if (!roleExists) {
+      const { error: roleError } = await supabase.from("user_roles").insert({
+        user_id: userId,
+        role: "teacher",
+      });
+      if (roleError) throw roleError;
+    }
+  };
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -45,24 +82,22 @@ const Auth = () => {
 
       if (error) throw error;
 
-      if (data.user) {
-        // Create profile
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .insert({
-            id: data.user.id,
-            user_id: data.user.id,
-            full_name: fullName,
-            email: email,
-          });
-
-        if (profileError) throw profileError;
-
+      if (data.user && data.session) {
+        // Session present: create profile and assign role now
+        await ensureProfileAndRole(data.user.id, fullName, email);
         toast({
           title: "Account created!",
-          description: "You can now sign in to your account.",
+          description: "Your account is pending admin approval. You will be notified once approved.",
         });
-
+        setEmail("");
+        setPassword("");
+        setFullName("");
+      } else if (data.user && !data.session) {
+        // No session (email confirmation required) — defer profile creation until first sign-in
+        toast({
+          title: "Account created!",
+          description: "Please verify your email, then sign in. Your profile will be created and sent for admin approval on first sign-in.",
+        });
         setEmail("");
         setPassword("");
         setFullName("");
@@ -88,12 +123,29 @@ const Auth = () => {
         ? `${studentId}@student.local` 
         : email;
 
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: loginEmail,
         password,
       });
 
       if (error) throw error;
+
+      // After successful sign-in, ensure profile and teacher role exist (staff path)
+      const { data: sessionData } = await supabase.auth.getSession();
+      const authedUser = sessionData.session?.user;
+      if (authedUser && loginMode === "staff") {
+        try {
+          await ensureProfileAndRole(authedUser.id, fullName || authedUser.user_metadata?.full_name || "", loginEmail);
+        } catch (profileErr: any) {
+          console.error("Profile/role setup error:", profileErr?.message || profileErr);
+          // Don't block login, just surface a warning
+          toast({
+            title: "Signed in, but setup incomplete",
+            description: "Your profile or teacher role could not be created automatically. Please contact an admin.",
+            variant: "destructive",
+          });
+        }
+      }
 
       toast({
         title: "Welcome back!",

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,9 @@ import {
   Legend, 
   LineChart, 
   Line, 
+  AreaChart,
+  Area,
+  ReferenceLine,
   PieChart, 
   Pie, 
   Cell
@@ -59,11 +63,22 @@ const attendanceData = [
   { month: "Dec", attendance: 94 },
 ];
 
-const demographicsData = [
+const ethnicityData = [
   { name: "Black", value: 57, color: "#3b82f6" },
-  { name: "China", value: 30, color: "#10b981" },
-  { name: "Germany", value: 17, color: "#f59e0b" },
-  { name: "Putin", value: 1, color: "#94a3b8" },
+  { name: "Asian", value: 20, color: "#10b981" },
+  { name: "White", value: 17, color: "#f59e0b" },
+  { name: "Other", value: 6, color: "#94a3b8" },
+];
+
+const nationalityData = [
+  { name: "Domestic", value: 72, color: "#6366f1" },
+  { name: "International", value: 28, color: "#22d3ee" },
+];
+
+const genderData = [
+  { name: "Female", value: 52, color: "#ec4899" },
+  { name: "Male", value: 46, color: "#06b6d4" },
+  { name: "Non-binary", value: 2, color: "#a78bfa" },
 ];
 
 const performanceData = [
@@ -81,7 +96,7 @@ const performanceData = [
   { month: "Dec", Excellent: 210000, Good: 160000, Average: 110000 },
 ];
 
-const StatisticalDashboard = () => {
+const StatisticalDashboard = ({ embedded = false }: { embedded?: boolean }) => {
   const { theme, setTheme } = useTheme();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -105,71 +120,80 @@ const StatisticalDashboard = () => {
     Good: { label: "Good", color: "#10b981" },
     Average: { label: "Average", color: "#f59e0b" },
     Black: { label: "Black", color: "#3b82f6" },
-    China: { label: "China", color: "#10b981" },
-    Germany: { label: "Germany", color: "#f59e0b" },
-    Putin: { label: "Putin", color: "#94a3b8" },
+    Asian: { label: "Asian", color: "#10b981" },
+    White: { label: "White", color: "#f59e0b" },
+    Other: { label: "Other", color: "#94a3b8" },
+    Domestic: { label: "Domestic", color: "#6366f1" },
+    International: { label: "International", color: "#22d3ee" },
+    Female: { label: "Female", color: "#ec4899" },
+    Male: { label: "Male", color: "#06b6d4" },
+    "Non-binary": { label: "Non-binary", color: "#a78bfa" },
   };
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-slate-900">
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-blue-900 text-white shadow-lg"
-        aria-label="Toggle menu"
-      >
-        <Menu className="w-5 h-5" />
-      </button>
+      {!embedded && (
+        <>
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-blue-900 text-white shadow-lg"
+            aria-label="Toggle menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
 
-      {/* Mobile Sidebar Overlay */}
-      {mobileMenuOpen && (
-        <div
-          className="md:hidden fixed inset-0 bg-black/50 z-40"
-          onClick={() => setMobileMenuOpen(false)}
-        />
+          {/* Mobile Sidebar Overlay */}
+          {mobileMenuOpen && (
+            <div
+              className="md:hidden fixed inset-0 bg-black/50 z-40"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+          )}
+
+          {/* Left Sidebar */}
+          <aside className={`${sidebarCollapsed ? 'w-20' : 'w-64'} ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} fixed md:static inset-y-0 left-0 z-40 bg-blue-900 dark:bg-blue-950 text-white transition-all duration-200 flex flex-col flex-shrink-0`}>
+            {/* Branding */}
+            <div className="p-4 border-b border-blue-800 dark:border-blue-900">
+              <div className="flex items-center gap-3">
+                <GraduationCap className="w-6 h-6 text-white" />
+                {!sidebarCollapsed && <span className="text-lg font-bold">School</span>}
+              </div>
+            </div>
+
+            {/* Hamburger Menu */}
+            <div className="p-4 flex items-center justify-between">
+              <button
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="hidden md:block p-2 rounded hover:bg-blue-800 dark:hover:bg-blue-900 transition-colors"
+                aria-label="Toggle sidebar"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="md:hidden p-2 rounded hover:bg-blue-800 dark:hover:bg-blue-900 transition-colors"
+                aria-label="Close menu"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Navigation */}
+            <nav className="flex-1 px-4 space-y-1">
+              <NavItem icon={Home} label="Dashboard" to="/dashboard" collapsed={sidebarCollapsed} />
+              <NavItem icon={FileText} label="Reports" to="/reports" collapsed={sidebarCollapsed} />
+              <NavItem icon={Users} label="Students" to="/admin?tab=students" collapsed={sidebarCollapsed} />
+              <NavItem icon={Users} label="Staff" to="/admin?tab=users" collapsed={sidebarCollapsed} />
+              <NavItem icon={GraduationCap} label="Academics" to="/gradebook" collapsed={sidebarCollapsed} />
+              <NavItem icon={FileText} label="Analytics" to="/analytics" collapsed={sidebarCollapsed} />
+              <NavItem icon={Settings} label="Settings" to="/admin?tab=users" collapsed={sidebarCollapsed} />
+            </nav>
+          </aside>
+        </>
       )}
-
-      {/* Left Sidebar */}
-      <aside className={`${sidebarCollapsed ? 'w-20' : 'w-64'} ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} fixed md:static inset-y-0 left-0 z-40 bg-blue-900 dark:bg-blue-950 text-white transition-all duration-200 flex flex-col flex-shrink-0`}>
-        {/* Branding */}
-        <div className="p-4 border-b border-blue-800 dark:border-blue-900">
-          <div className="flex items-center gap-3">
-            <GraduationCap className="w-6 h-6 text-white" />
-            {!sidebarCollapsed && <span className="text-lg font-bold">School</span>}
-          </div>
-        </div>
-
-        {/* Hamburger Menu */}
-        <div className="p-4 flex items-center justify-between">
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="hidden md:block p-2 rounded hover:bg-blue-800 dark:hover:bg-blue-900 transition-colors"
-            aria-label="Toggle sidebar"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => setMobileMenuOpen(false)}
-            className="md:hidden p-2 rounded hover:bg-blue-800 dark:hover:bg-blue-900 transition-colors"
-            aria-label="Close menu"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 px-4 space-y-1">
-          <NavItem icon={Home} label="Dashboard" active={false} collapsed={sidebarCollapsed} />
-          <NavItem icon={FileText} label="Reports" active={false} collapsed={sidebarCollapsed} />
-          <NavItem icon={Users} label="Students" active={true} collapsed={sidebarCollapsed} />
-          <NavItem icon={Users} label="Staff" active={false} collapsed={sidebarCollapsed} />
-          <NavItem icon={GraduationCap} label="Academics" active={false} collapsed={sidebarCollapsed} />
-          <NavItem icon={FileText} label="Reports" active={false} collapsed={sidebarCollapsed} />
-          <NavItem icon={Settings} label="Settings" active={false} collapsed={sidebarCollapsed} />
-        </nav>
-      </aside>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
@@ -272,10 +296,12 @@ const StatisticalDashboard = () => {
                   <ChartContainer config={chartConfig} className="h-[180px] sm:h-[200px] w-full">
                     <BarChart data={enrollmentData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
                       <CartesianGrid stroke="#e2e8f0" vertical={false} />
+                      <ReferenceLine y={0} stroke="#cbd5e1" strokeWidth={1} />
                       <XAxis dataKey="year" stroke="#64748b" tick={{ fontSize: 11 }} />
-                      <YAxis stroke="#64748b" tick={{ fontSize: 11 }} />
+                      <YAxis stroke="#64748b" tick={{ fontSize: 11 }} domain={[0, 4500]} />
                       <ChartTooltip content={<ChartTooltipContent />} />
                       <Legend wrapperStyle={{ fontSize: '12px' }} />
+                      <ReferenceLine y={4500} stroke="#94a3b8" strokeDasharray="4 4" />
                       <Bar dataKey="All" stackId="a" fill="#3b82f6" />
                       <Bar dataKey="Grade" stackId="a" fill="#60a5fa" />
                       <Bar dataKey="Rewed" stackId="a" fill="#10b981" />
@@ -306,13 +332,19 @@ const StatisticalDashboard = () => {
               <CardContent className="overflow-x-auto px-4 pb-3">
                 <div className="min-w-0 w-full">
                   <ChartContainer config={chartConfig} className="h-[180px] sm:h-[200px] w-full">
-                    <LineChart data={attendanceData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                    <AreaChart data={attendanceData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                      <defs>
+                        <linearGradient id="attendanceArea" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.35} />
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05} />
+                        </linearGradient>
+                      </defs>
                       <CartesianGrid stroke="#e2e8f0" vertical={false} />
                       <XAxis dataKey="month" stroke="#64748b" tick={{ fontSize: 11 }} />
                       <YAxis stroke="#64748b" tick={{ fontSize: 11 }} label={{ value: "Attendance", angle: -90, position: "insideLeft", style: { fontSize: '11px' } }} />
                       <ChartTooltip content={<ChartTooltipContent />} />
-                      <Line type="monotone" dataKey="attendance" stroke="#3b82f6" strokeWidth={2} />
-                    </LineChart>
+                      <Area type="monotone" dataKey="attendance" stroke="#3b82f6" strokeWidth={2} fill="url(#attendanceArea)" />
+                    </AreaChart>
                   </ChartContainer>
                 </div>
               </CardContent>
@@ -321,36 +353,45 @@ const StatisticalDashboard = () => {
             {/* Student Demographics */}
             <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 overflow-hidden">
               <CardHeader className="pb-1 pt-3 px-4">
-                <CardTitle className="text-sm sm:text-base text-slate-900 dark:text-white break-words">Student Demographics (Ethnicity)</CardTitle>
+                <CardTitle className="text-sm sm:text-base text-slate-900 dark:text-white break-words">Student Demographics</CardTitle>
               </CardHeader>
-              <CardContent className="overflow-x-auto px-4 pb-3">
+              <CardContent className="overflow-x-auto px-4 pb-4">
                 <div className="min-w-0 w-full">
-                  <div className="flex items-center justify-center mb-3">
-                    <ChartContainer config={chartConfig} className="h-[180px] sm:h-[200px] w-full max-w-md">
-                      <PieChart>
-                        <Pie
-                          data={demographicsData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, value }) => `${value}%`}
-                          outerRadius={70}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {demographicsData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+                    {[
+                      { title: "Ethnicity", data: ethnicityData },
+                      { title: "Nationality", data: nationalityData },
+                      { title: "Gender", data: genderData },
+                    ].map((section) => (
+                      <div key={section.title} className="flex flex-col items-center gap-3">
+                        <h4 className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200">{section.title}</h4>
+                        <ChartContainer config={chartConfig} className="h-[160px] sm:h-[180px] w-full">
+                          <PieChart>
+                            <Pie
+                              data={section.data}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={35}
+                              outerRadius={60}
+                              labelLine={false}
+                              label={({ value }) => `${value}%`}
+                              dataKey="value"
+                            >
+                              {section.data.map((entry, index) => (
+                                <Cell key={`${section.title}-cell-${index}`} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                          </PieChart>
+                        </ChartContainer>
+                        <div className="flex flex-wrap gap-2 justify-center">
+                          {section.data.map((item) => (
+                            <div key={`${section.title}-${item.name}`} className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }}></div>
+                              <span className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">{item.name}</span>
+                            </div>
                           ))}
-                        </Pie>
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                      </PieChart>
-                    </ChartContainer>
-                  </div>
-                  <div className="flex flex-wrap gap-3 sm:gap-4 justify-center">
-                    {demographicsData.map((item, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }}></div>
-                        <span className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">{item.name}</span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -388,10 +429,17 @@ const StatisticalDashboard = () => {
                   <ChartContainer config={chartConfig} className="h-[180px] sm:h-[200px] w-full">
                     <BarChart data={performanceData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
                       <CartesianGrid stroke="#e2e8f0" vertical={false} />
+                      <ReferenceLine y={0} stroke="#cbd5e1" strokeWidth={1} />
                       <XAxis dataKey="month" stroke="#64748b" tick={{ fontSize: 11 }} />
-                      <YAxis stroke="#64748b" tick={{ fontSize: 11 }} label={{ value: "Pricient", angle: -90, position: "insideLeft", style: { fontSize: '11px' } }} />
+                      <YAxis
+                        stroke="#64748b"
+                        tick={{ fontSize: 11 }}
+                        domain={[0, 450000]}
+                        label={{ value: "Pricient", angle: -90, position: "insideLeft", style: { fontSize: '11px' } }}
+                      />
                       <ChartTooltip content={<ChartTooltipContent />} />
                       <Legend wrapperStyle={{ fontSize: '12px' }} />
+                      <ReferenceLine y={450000} stroke="#94a3b8" strokeDasharray="4 4" />
                       <Bar dataKey="Excellent" stackId="a" fill="#3b82f6" />
                       <Bar dataKey="Good" stackId="a" fill="#10b981" />
                       <Bar dataKey="Average" stackId="a" fill="#f59e0b" />
@@ -407,9 +455,12 @@ const StatisticalDashboard = () => {
   );
 };
 
-const NavItem = ({ icon: Icon, label, active, collapsed }: { icon: any; label: string; active: boolean; collapsed: boolean }) => {
+const NavItem = ({ icon: Icon, label, to, collapsed }: { icon: any; label: string; to: string; collapsed: boolean }) => {
+  const location = useLocation();
+  const active = location.pathname === to;
   return (
-    <button
+    <Link
+      to={to}
       className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
         active
           ? "bg-blue-700 dark:bg-blue-800 text-white"
@@ -418,7 +469,7 @@ const NavItem = ({ icon: Icon, label, active, collapsed }: { icon: any; label: s
     >
       <Icon className="w-5 h-5" />
       {!collapsed && <span className="font-medium">{label}</span>}
-    </button>
+    </Link>
   );
 };
 
