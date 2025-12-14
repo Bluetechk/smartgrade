@@ -1,11 +1,27 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const useGrades = (classSubjectId?: string, period?: string) => {
   return useQuery({
     queryKey: ["grades", classSubjectId, period],
     queryFn: async () => {
+      // If user is a teacher (and not admin), ensure they can only query grades for their class_subjects
+      const { user } = useAuth();
+      if (user) {
+        const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+        const isTeacher = Array.isArray(roles) && roles.some((r: any) => r.role === "teacher");
+        const isAdmin = Array.isArray(roles) && roles.some((r: any) => r.role === "admin");
+        if (isTeacher && !isAdmin && classSubjectId) {
+          // Verify the class_subject is assigned to this teacher
+          const { data: cs } = await supabase.from("class_subjects").select("teacher_id").eq("id", classSubjectId).single();
+          if (!cs || cs.teacher_id !== user.id) {
+            return [] as any[];
+          }
+        }
+      }
+
       let query = supabase
         .from("student_grades")
         .select(`
@@ -28,7 +44,8 @@ export const useGrades = (classSubjectId?: string, period?: string) => {
       }
 
       if (period) {
-        query = query.eq("period", period as any);
+        // Cast enum column to text to avoid Postgres operator mismatch
+        query = query.eq("period::text" as any, period as any);
       }
 
       const { data, error } = await query;
@@ -70,17 +87,30 @@ export const useSaveGrades = () => {
   });
 };
 
-export const useAssessmentTypes = () => {
+export const useAssessmentTypes = (departmentId?: string) => {
   return useQuery({
-    queryKey: ["assessment-types"],
+    queryKey: ["assessment-types", departmentId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("assessment_types")
-        .select("*")
-        .order("display_order");
+        .select("*");
 
-      if (error) throw error;
-      return data;
+      // Filter by department if provided
+      if (departmentId) {
+        query = query.eq("department_id", departmentId);
+      }
+
+      query = query.order("display_order");
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Assessment types query error:", error);
+        throw error;
+      }
+      return data || [];
     },
+    enabled: !!departmentId,
+    staleTime: 60000,
   });
 };

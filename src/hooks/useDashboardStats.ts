@@ -1,38 +1,54 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const useDashboardStats = () => {
+  const { user } = useAuth();
+
   return useQuery({
-    queryKey: ["dashboard-stats"],
+    queryKey: ["dashboard-stats", user?.id],
     queryFn: async () => {
       try {
-        // Get total students
-        const { count: totalStudents, error: studentsError } = await supabase
-          .from("students")
-          .select("*", { count: "exact", head: true });
+        let isTeacher = false;
+        let isAdmin = false;
+        if (user) {
+          const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+          isTeacher = Array.isArray(roles) && roles.some((r: any) => r.role === "teacher");
+          isAdmin = Array.isArray(roles) && roles.some((r: any) => r.role === "admin");
+        }
 
-        if (studentsError) {
-          console.error("Students query error:", studentsError);
-          // Return default values if table doesn't exist
-          if (studentsError.code === "406" || studentsError.code === "PGRST116") {
-            console.warn("Students table not found - migrations may not be executed");
-            return {
-              totalStudents: 0,
-              totalClasses: 0,
-              currentYear: "Not Set",
-            };
-          }
-          throw studentsError;
+        // Get total students (global for admins; limited to teacher's classes for teachers)
+        let totalStudents = 0;
+        if (isTeacher && !isAdmin && user) {
+          const { count, error } = await supabase
+            .from("students")
+            .select("id", { count: "exact", head: true })
+            .eq("classes.teacher_id", user.id);
+          if (error) throw error;
+          totalStudents = count || 0;
+        } else {
+          const { count, error } = await supabase
+            .from("students")
+            .select("id", { count: "exact", head: true });
+          if (error) throw error;
+          totalStudents = count || 0;
         }
 
         // Get total classes
-        const { count: totalClasses, error: classesError } = await supabase
-          .from("classes")
-          .select("*", { count: "exact", head: true });
-
-        if (classesError) {
-          console.error("Classes query error:", classesError);
-          throw classesError;
+        let totalClasses = 0;
+        if (isTeacher && !isAdmin && user) {
+          const { count, error } = await supabase
+            .from("classes")
+            .select("id", { count: "exact", head: true })
+            .eq("teacher_id", user.id);
+          if (error) throw error;
+          totalClasses = count || 0;
+        } else {
+          const { count, error } = await supabase
+            .from("classes")
+            .select("id", { count: "exact", head: true });
+          if (error) throw error;
+          totalClasses = count || 0;
         }
 
         // Get current academic year
@@ -42,17 +58,14 @@ export const useDashboardStats = () => {
           .select("year_name")
           .eq("is_current", true);
 
-        if (yearError) {
-          console.warn("Academic years query error:", yearError);
-          // Don't throw - just use default value
-        } else if (academicYears && academicYears.length > 0) {
+        if (!yearError && academicYears && academicYears.length > 0) {
           currentYear = academicYears[0].year_name;
         }
 
         return {
-          totalStudents: totalStudents || 0,
-          totalClasses: totalClasses || 0,
-          currentYear: currentYear,
+          totalStudents,
+          totalClasses,
+          currentYear,
         };
       } catch (error) {
         console.error("Dashboard stats error:", error);

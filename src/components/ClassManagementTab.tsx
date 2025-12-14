@@ -24,6 +24,7 @@ export const ClassManagementTab = () => {
     academic_year_id: "",
   });
 
+  // Call all hooks unconditionally at the top level
   const { data: classes, isLoading } = useClasses();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -64,6 +65,7 @@ export const ClassManagementTab = () => {
     },
   });
 
+  // Call this hook unconditionally - the enabled flag will prevent execution, not hook skipping
   const { data: classSubjects } = useQuery({
     queryKey: ["class-subjects", selectedClassId],
     queryFn: async () => {

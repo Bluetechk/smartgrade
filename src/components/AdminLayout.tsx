@@ -1,9 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Users, FileText, BookOpen, Settings, Home, Menu, ChevronLeft, BarChart3 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Drawer, DrawerTrigger, DrawerContent, DrawerOverlay, DrawerClose } from "@/components/ui/drawer";
+import { supabase } from "@/integrations/supabase/client";
+import { LayoutContext } from "@/contexts/LayoutContext";
 
 const SidebarLink = ({ to, label, icon: Icon, collapsed = false }: { to: string; label: string; icon: any; collapsed?: boolean }) => {
   const location = useLocation();
@@ -22,13 +24,40 @@ const SidebarLink = ({ to, label, icon: Icon, collapsed = false }: { to: string;
 
 const AdminLayout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   const { user } = useAuth();
+  const [roles, setRoles] = useState<string[] | null>(null);
   const name = (user && (user.user_metadata?.full_name || user.email)) || "Admin User";
   const avatarSrc = user?.user_metadata?.avatar_url || undefined;
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
+  useEffect(() => {
+    let mounted = true;
+    const fetchRoles = async () => {
+      if (!user) return setRoles([]);
+      const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+      if (!mounted) return;
+      setRoles(Array.isArray(data) ? data.map((r: any) => r.role) : []);
+    };
+    fetchRoles();
+    return () => { mounted = false; };
+  }, [user]);
+
+  // If roles have been loaded and the user is NOT an admin, render a simplified layout
+  const isAdmin = Array.isArray(roles) && roles.includes("admin");
+  const roleLabel = (roles && roles.includes("admin")) ? "Administrator" : (roles && roles.includes("teacher")) ? "Teacher" : "User";
+  if (roles !== null && !isAdmin) {
+    return (
+      <LayoutContext.Provider value={{ insideAdminLayout: true, isAdmin: false }}>
+        <div className="min-h-screen bg-slate-50">
+          <main className="p-6">{children}</main>
+        </div>
+      </LayoutContext.Provider>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex bg-slate-50">
+    <LayoutContext.Provider value={{ insideAdminLayout: true, isAdmin }}>
+      <div className="min-h-screen flex bg-slate-50">
       {/* Mobile drawer trigger */}
       <div className="md:hidden fixed top-4 left-4 z-50">
         <button
@@ -58,7 +87,7 @@ const AdminLayout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                 </Avatar>
                 <div>
                   <div className="text-sm font-semibold">{name}</div>
-                  <div className="text-xs text-blue-200">Administrator</div>
+                  <div className="text-xs text-blue-200">{roleLabel}</div>
                 </div>
                 <div className="ml-auto">
                   <DrawerClose className="p-2 rounded-md bg-blue-800/60">
@@ -72,8 +101,12 @@ const AdminLayout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
               <Link to="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-md text-slate-100 hover:bg-blue-800/60"> <Home className="w-5 h-5"/> <span>Dashboard</span></Link>
               <Link to="/gradebook" className="flex items-center gap-3 px-4 py-3 rounded-md text-slate-100 hover:bg-blue-800/60"> <BookOpen className="w-5 h-5"/> <span>Gradebook</span></Link>
               <Link to="/reports" className="flex items-center gap-3 px-4 py-3 rounded-md text-slate-100 hover:bg-blue-800/60"> <FileText className="w-5 h-5"/> <span>Reports</span></Link>
-              <Link to="/admin" className="flex items-center gap-3 px-4 py-3 rounded-md text-slate-100 hover:bg-blue-800/60"> <Users className="w-5 h-5"/> <span>Users</span></Link>
-              <Link to="/settings" className="flex items-center gap-3 px-4 py-3 rounded-md text-slate-100 hover:bg-blue-800/60"> <Settings className="w-5 h-5"/> <span>Settings</span></Link>
+              {(roles || []).includes("admin") && (
+                <>
+                  <Link to="/admin" className="flex items-center gap-3 px-4 py-3 rounded-md text-slate-100 hover:bg-blue-800/60"> <Users className="w-5 h-5"/> <span>Users</span></Link>
+                  <Link to="/settings" className="flex items-center gap-3 px-4 py-3 rounded-md text-slate-100 hover:bg-blue-800/60"> <Settings className="w-5 h-5"/> <span>Settings</span></Link>
+                </>
+              )}
             </nav>
           </div>
         </DrawerContent>
@@ -90,9 +123,9 @@ const AdminLayout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
               )}
             </Avatar>
             {!collapsed && (
-              <div>
+                <div>
                 <div className="text-sm font-semibold">{name}</div>
-                <div className="text-xs text-blue-200">Administrator</div>
+                <div className="text-xs text-blue-200">{roleLabel}</div>
               </div>
             )}
           </div>
@@ -112,8 +145,12 @@ const AdminLayout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
           <SidebarLink to="/gradebook" label="Gradebook" icon={BookOpen} collapsed={collapsed} />
           <SidebarLink to="/reports" label="Reports" icon={FileText} collapsed={collapsed} />
           <SidebarLink to="/analytics" label="Analytics" icon={BarChart3} collapsed={collapsed} />
-          <SidebarLink to="/admin" label="Users & Settings" icon={Users} collapsed={collapsed} />
-          <SidebarLink to="/settings" label="Settings" icon={Settings} collapsed={collapsed} />
+          {(roles || []).includes("admin") && (
+            <>
+              <SidebarLink to="/admin" label="Users & Settings" icon={Users} collapsed={collapsed} />
+              <SidebarLink to="/settings" label="Settings" icon={Settings} collapsed={collapsed} />
+            </>
+          )}
         </nav>
 
         <div className="p-4 border-t border-blue-900/40">
@@ -125,12 +162,13 @@ const AdminLayout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
         </div>
       </aside>
 
-      <div className="flex-1">
-        <div className="md:pl-0">
-          <main className="p-6">{children}</main>
+        <div className="flex-1">
+          <div className="md:pl-0">
+            <main className="p-6">{children}</main>
+          </div>
         </div>
       </div>
-    </div>
+    </LayoutContext.Provider>
   );
 };
 

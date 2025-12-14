@@ -11,12 +11,16 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import DashboardRouter from "@/components/DashboardRouter";
 import Gradebook from "./pages/Gradebook";
 import Reports from "./pages/Reports";
 import Analytics from "./pages/Analytics";
 import Admin from "./pages/Admin";
 import AdminLayout from "@/components/AdminLayout";
+import AdminOnly from "@/components/AdminOnly";
 import StatisticalDashboard from "@/components/StatisticalDashboard";
+import TeacherLayout from "@/components/TeacherLayout";
+import RoleBasedLayout from "@/components/RoleBasedLayout";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,9 +41,7 @@ const App = () => (
                     path="/dashboard"
                     element={
                       <ProtectedRoute>
-                        <AdminLayout>
-                          <StatisticalDashboard embedded />
-                        </AdminLayout>
+                        <DashboardRouter />
                       </ProtectedRoute>
                     }
                   />
@@ -47,16 +49,18 @@ const App = () => (
                     path="/statistical"
                     element={
                       <ProtectedRoute>
-                        <AdminLayout>
-                          <StatisticalDashboard embedded />
-                        </AdminLayout>
+                        <AdminOnly>
+                          <AdminLayout>
+                            <StatisticalDashboard embedded />
+                          </AdminLayout>
+                        </AdminOnly>
                       </ProtectedRoute>
                     }
                   />
-                  <Route path="/gradebook" element={<ProtectedRoute><AdminLayout><Gradebook /></AdminLayout></ProtectedRoute>} />
-                  <Route path="/reports" element={<ProtectedRoute><AdminLayout><Reports /></AdminLayout></ProtectedRoute>} />
-                  <Route path="/analytics" element={<ProtectedRoute><AdminLayout><Analytics /></AdminLayout></ProtectedRoute>} />
-                  <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+                  <Route path="/gradebook" element={<ProtectedRoute><RoleBasedLayout><Gradebook /></RoleBasedLayout></ProtectedRoute>} />
+                  <Route path="/reports" element={<ProtectedRoute><RoleBasedLayout><Reports /></RoleBasedLayout></ProtectedRoute>} />
+                  <Route path="/analytics" element={<ProtectedRoute><RoleBasedLayout><Analytics /></RoleBasedLayout></ProtectedRoute>} />
+                  <Route path="/admin" element={<ProtectedRoute><AdminOnly><Admin /></AdminOnly></ProtectedRoute>} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Route>

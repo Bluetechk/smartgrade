@@ -19,14 +19,22 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     }
 
     if (user) {
-      // Check if user is a teacher and if they're approved
+      // Check if user is a teacher and if they're approved (but admins skip this)
       const checkTeacherApproval = async () => {
         try {
-          // Check if user has teacher role
+          // Check if user has admin role first — admins bypass approval
           const { data: roles } = await supabase
             .from("user_roles")
             .select("role")
             .eq("user_id", user.id);
+
+          const hasAdminRole = roles?.some(r => r.role === "admin") || false;
+          if (hasAdminRole) {
+            // Admins are always approved
+            setIsApproved(true);
+            setCheckingApproval(false);
+            return;
+          }
 
           const hasTeacherRole = roles?.some(r => r.role === "teacher") || false;
           setIsTeacher(hasTeacherRole);

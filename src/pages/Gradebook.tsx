@@ -16,26 +16,44 @@ const Gradebook = () => {
   const [selectedSubject, setSelectedSubject] = useState<string>("");
   const [selectedPeriod, setSelectedPeriod] = useState<string>("p1");
   const [isLocked, setIsLocked] = useState(true);
-  const [editedGrades, setEditedGrades] = useState<Record<string, Record<string, number>>>({});
+  const [editedGrades, setEditedGrades] = useState<Record<string, Record<string, string>>>({});
 
   const { data: classes, isLoading: classesLoading } = useClasses();
   const { data: classSubjects, isLoading: subjectsLoading } = useClassSubjects(selectedClass);
   const { data: students, isLoading: studentsLoading } = useStudents(selectedClass);
-  const { data: assessmentTypes, isLoading: assessmentLoading } = useAssessmentTypes();
+  
+  // Extract department_id from selected class
+  const [departmentId, setDepartmentId] = useState<string>();
+  useEffect(() => {
+    if (selectedClass && classes) {
+      const selectedClassData = classes.find(c => c.id === selectedClass);
+      setDepartmentId(selectedClassData?.department_id);
+      console.log("[Gradebook] Selected class department_id:", selectedClassData?.department_id);
+    }
+  }, [selectedClass, classes]);
+  
+  const { data: assessmentTypes, isLoading: assessmentLoading } = useAssessmentTypes(departmentId);
   const { data: grades, isLoading: gradesLoading } = useGrades(selectedSubject, selectedPeriod);
   const saveGradesMutation = useSaveGrades();
 
+  // Debug logging
+  useEffect(() => {
+    console.log("[Gradebook] selectedClass:", selectedClass, "classes count:", classes?.length);
+    console.log("[Gradebook] selectedSubject:", selectedSubject, "classSubjects:", classSubjects);
+  }, [selectedClass, classes, selectedSubject, classSubjects]);
+
   // Initialize edited grades when data loads
+  // Initialize edited grades when data loads (store as strings to allow free editing)
   useEffect(() => {
     if (grades && students && assessmentTypes) {
-      const initialGrades: Record<string, Record<string, number>> = {};
+      const initialGrades: Record<string, Record<string, string>> = {};
       students.forEach(student => {
         initialGrades[student.id] = {};
         assessmentTypes.forEach(at => {
           const existingGrade = grades.find(g => 
             g.student_id === student.id && g.assessment_type_id === at.id
           );
-          initialGrades[student.id][at.id] = existingGrade ? Number(existingGrade.score) : 0;
+          initialGrades[student.id][at.id] = existingGrade ? String(existingGrade.score) : "";
         });
       });
       setEditedGrades(initialGrades);
@@ -43,16 +61,37 @@ const Gradebook = () => {
   }, [grades, students, assessmentTypes]);
 
   const handleGradeChange = (studentId: string, assessmentTypeId: string, value: string) => {
-    const numValue = Number(value) || 0;
-    const maxScore = assessmentTypes?.find(at => at.id === assessmentTypeId)?.max_points || 0;
-    // Enforce minimum of 60 and maximum of maxScore
-    const clampedValue = numValue === 0 ? 0 : Math.min(Math.max(60, numValue), maxScore);
-    
+    // Allow free editing as string so user can delete and type
+    const sanitized = value.replace(/[^\d.]/g, "");
     setEditedGrades(prev => ({
       ...prev,
       [studentId]: {
         ...prev[studentId],
-        [assessmentTypeId]: clampedValue,
+        [assessmentTypeId]: sanitized,
+      },
+    }));
+  };
+
+  const handleGradeBlur = (studentId: string, assessmentTypeId: string, maxPoints: number) => {
+    const raw = editedGrades[studentId]?.[assessmentTypeId];
+    const numValue = raw ? Number(raw) : NaN;
+    if (isNaN(numValue)) {
+      // If empty or invalid, leave as empty string (will be treated as 0 on save)
+      setEditedGrades(prev => ({
+        ...prev,
+        [studentId]: {
+          ...prev[studentId],
+          [assessmentTypeId]: "",
+        },
+      }));
+      return;
+    }
+    const clamped = Math.min(Math.max(0, Math.floor(numValue)), maxPoints);
+    setEditedGrades(prev => ({
+      ...prev,
+      [studentId]: {
+        ...prev[studentId],
+        [assessmentTypeId]: String(clamped),
       },
     }));
   };
@@ -65,13 +104,16 @@ const Gradebook = () => {
           g.student_id === studentId && g.assessment_type_id === assessmentTypeId
         );
         const maxScore = assessmentTypes?.find(at => at.id === assessmentTypeId)?.max_points || 0;
-        
+        const raw = editedGrades[studentId][assessmentTypeId];
+        const parsed = raw ? Number(raw) : 0;
+        const clamped = Math.min(Math.max(0, Math.floor(parsed || 0)), maxScore);
+
         const gradeData: any = {
           student_id: studentId,
           class_subject_id: selectedSubject,
           assessment_type_id: assessmentTypeId,
           period: selectedPeriod,
-          score: editedGrades[studentId][assessmentTypeId],
+          score: clamped,
           max_score: maxScore,
           is_locked: isLocked,
         };
@@ -136,15 +178,21 @@ const Gradebook = () => {
             </SelectTrigger>
             <SelectContent>
               {subjectsLoading ? (
-                <SelectItem value="loading" disabled>Loading...</SelectItem>
-              ) : classSubjects?.length === 0 ? (
-                <SelectItem value="none" disabled>No subjects for this class</SelectItem>
+                <SelectItem value="loading" disabled>Loading subjects...</SelectItem>
+              ) : !classSubjects || classSubjects.length === 0 ? (
+                <SelectItem value="none" disabled>
+                  {selectedClass ? "No subjects for this class" : "Select a class first"}
+                </SelectItem>
               ) : (
-                classSubjects?.map((cs) => (
-                  <SelectItem key={cs.id} value={cs.id}>
-                    {cs.subjects?.name}
-                  </SelectItem>
-                ))
+                classSubjects.map((cs: any) => {
+                  const subjectName = cs.subjects?.name || `Subject ${cs.id}`;
+                  console.log("[Gradebook Subject Dropdown] cs:", cs, "name:", subjectName);
+                  return (
+                    <SelectItem key={cs.id} value={cs.id}>
+                      {subjectName}
+                    </SelectItem>
+                  );
+                })
               )}
             </SelectContent>
           </Select>
@@ -190,25 +238,29 @@ const Gradebook = () => {
           <Card>
             <CardHeader>
               <CardTitle>
-                {classSubjects?.find(cs => cs.id === selectedSubject)?.subjects?.name} - 
-                {classes?.find(c => c.id === selectedClass)?.name} - 
                 {(() => {
-                  switch(selectedPeriod) {
-                    case 'p1': return 'Period 1';
-                    case 'p2': return 'Period 2';
-                    case 'p3': return 'Period 3';
-                    case 'p4': return 'Period 4';
-                    case 'p5': return 'Period 5';
-                    case 'p6': return 'Period 6';
-                    case 'exam_s1': return 'Exam S1';
-                    case 'exam_s2': return 'Exam S2';
-                    default: return selectedPeriod;
-                  }
+                  const selectedCS = classSubjects?.find((cs: any) => cs.id === selectedSubject);
+                  const subjectName = selectedCS?.subjects?.name || selectedCS?.subject_id || 'Unknown Subject';
+                  const className = classes?.find((c: any) => c.id === selectedClass)?.name || 'Unknown Class';
+                  const periodLabel = (() => {
+                    switch(selectedPeriod) {
+                      case 'p1': return 'Period 1';
+                      case 'p2': return 'Period 2';
+                      case 'p3': return 'Period 3';
+                      case 'p4': return 'Period 4';
+                      case 'p5': return 'Period 5';
+                      case 'p6': return 'Period 6';
+                      case 'exam_s1': return 'Exam S1';
+                      case 'exam_s2': return 'Exam S2';
+                      default: return selectedPeriod;
+                    }
+                  })();
+                  return `${subjectName} - ${className} - ${periodLabel}`;
                 })()}
               </CardTitle>
               <CardDescription>
                 {assessmentTypes && assessmentTypes.length > 0 
-                  ? `Assessment breakdown: ${assessmentTypes.map(at => `${at.name} (${at.max_points})`).join(', ')}`
+                  ? `Assessment breakdown: ${assessmentTypes.map((at: any) => `${at.name} (${at.max_points})`).join(', ')}`
                   : 'No assessment types configured'
                 }
               </CardDescription>
@@ -232,27 +284,29 @@ const Gradebook = () => {
                       <TableBody>
                         {students.map((student) => {
                           const studentEditedGrades = editedGrades[student.id] || {};
-                          const total = Object.values(studentEditedGrades).reduce((sum, score) => sum + score, 0);
+                          const total = Object.values(studentEditedGrades).reduce((sum, score) => sum + (Number(score) || 0), 0);
                           
                           return (
                             <TableRow key={student.id}>
                               <TableCell className="font-medium">{student.full_name}</TableCell>
                               {assessmentTypes?.map((at) => {
-                                const currentValue = studentEditedGrades[at.id] || 0;
-                                const isRedGrade = currentValue >= 60 && currentValue <= 69;
+                                const currentValue = studentEditedGrades[at.id] || "";
+                                const numericValue = Number(currentValue) || 0;
+                                const isRedGrade = numericValue >= 60 && numericValue <= 69;
                                 return (
                                   <TableCell key={at.id} className="text-center">
                                     {isLocked ? (
-                                      <span className={currentValue > 0 ? (isRedGrade ? "text-red-500 font-semibold" : "text-muted-foreground") : "text-muted-foreground"}>
-                                        {currentValue > 0 ? currentValue : '-'}
+                                      <span className={numericValue > 0 ? (isRedGrade ? "text-red-500 font-semibold" : "text-muted-foreground") : "text-muted-foreground"}>
+                                        {numericValue > 0 ? numericValue : '-'}
                                       </span>
                                     ) : (
                                       <Input
                                         type="number"
-                                        min="60"
+                                        min="0"
                                         max={at.max_points}
-                                        value={currentValue ?? ''}
+                                        value={currentValue || ''}
                                         onChange={(e) => handleGradeChange(student.id, at.id, e.target.value)}
+                                        onBlur={() => handleGradeBlur(student.id, at.id, at.max_points)}
                                         className={`w-20 text-center mx-auto ${isRedGrade ? 'text-red-500 font-semibold' : ''}`}
                                       />
                                     )}
@@ -274,14 +328,14 @@ const Gradebook = () => {
                       onClick={() => {
                         // Reset to original grades
                         if (grades && students && assessmentTypes) {
-                          const initialGrades: Record<string, Record<string, number>> = {};
+                          const initialGrades: Record<string, Record<string, string>> = {};
                           students.forEach(student => {
                             initialGrades[student.id] = {};
                             assessmentTypes.forEach(at => {
                               const existingGrade = grades.find(g => 
                                 g.student_id === student.id && g.assessment_type_id === at.id
                               );
-                              initialGrades[student.id][at.id] = existingGrade ? Number(existingGrade.score) : 0;
+                              initialGrades[student.id][at.id] = existingGrade ? String(existingGrade.score) : "";
                             });
                           });
                           setEditedGrades(initialGrades);

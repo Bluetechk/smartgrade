@@ -86,15 +86,6 @@ CREATE TABLE public.assessment_types (
 
 ALTER TABLE public.assessment_types ENABLE ROW LEVEL SECURITY;
 
--- Insert default assessment types
-INSERT INTO public.assessment_types (name, max_points, display_order) VALUES
-('Attendance', 5, 1),
-('Participation', 5, 2),
-('Project', 10, 3),
-('Assignment', 10, 4),
-('Quiz', 20, 5),
-('Test', 50, 6);
-
 -- Students
 CREATE TABLE public.students (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

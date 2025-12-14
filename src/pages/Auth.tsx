@@ -15,7 +15,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [studentId, setStudentId] = useState("");
-  const [loginMode, setLoginMode] = useState<"staff" | "student">("staff");
+  const [loginMode, setLoginMode] = useState<"staff" | "student" | "admin">("staff");
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -29,7 +29,15 @@ const Auth = () => {
 
   // Ensure profile and teacher role exist for staff users
   const ensureProfileAndRole = async (userId: string, fullNameValue: string, emailValue: string) => {
-    // Create profile if missing
+    // Fetch existing roles for this user to determine behavior for admins
+    const { data: existingRoles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
+
+    const hasAdminRole = Array.isArray(existingRoles) && existingRoles.some((r: any) => r.role === "admin");
+
+    // Create profile if missing. Admins are auto-approved; other staff require approval.
     const { data: profileExists } = await supabase
       .from("profiles")
       .select("id")
@@ -42,25 +50,21 @@ const Auth = () => {
         user_id: userId,
         full_name: fullNameValue,
         email: emailValue,
-        is_approved: false, // staff need admin approval
+        is_approved: hasAdminRole ? true : false,
       });
       if (profileError) throw profileError;
     }
 
-    // Assign teacher role if missing
-    const { data: roleExists } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "teacher")
-      .maybeSingle();
-
-    if (!roleExists) {
-      const { error: roleError } = await supabase.from("user_roles").insert({
-        user_id: userId,
-        role: "teacher",
-      });
-      if (roleError) throw roleError;
+    // If the user is an admin, do not assign the teacher role automatically.
+    if (!hasAdminRole) {
+      const hasTeacherRole = Array.isArray(existingRoles) && existingRoles.some((r: any) => r.role === "teacher");
+      if (!hasTeacherRole) {
+        const { error: roleError } = await supabase.from("user_roles").insert({
+          user_id: userId,
+          role: "teacher",
+        });
+        if (roleError) throw roleError;
+      }
     }
   };
 
@@ -147,6 +151,31 @@ const Auth = () => {
         }
       }
 
+      // If admin login was selected, verify the user actually has an admin role.
+      if (authedUser && loginMode === "admin") {
+        const { data: rolesData, error: rolesError } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", authedUser.id);
+
+        if (rolesError) {
+          console.error("Error checking roles:", rolesError);
+        }
+
+        const isAdmin = Array.isArray(rolesData) && rolesData.some((r: any) => r.role === "admin");
+        if (!isAdmin) {
+          // Not an admin — sign out and inform the user
+          await supabase.auth.signOut();
+          toast({
+            title: "Access denied",
+            description: "This account does not have admin privileges. You have been signed out.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
       toast({
         title: "Welcome back!",
         description: "You have successfully signed in.",
@@ -203,6 +232,14 @@ const Auth = () => {
                       onClick={() => setLoginMode("student")}
                     >
                       Student Login
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={loginMode === "admin" ? "default" : "outline"}
+                      className="flex-1"
+                      onClick={() => setLoginMode("admin")}
+                    >
+                      Admin Login
                     </Button>
                   </div>
                 </div>

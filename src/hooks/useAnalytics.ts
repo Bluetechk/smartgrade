@@ -20,7 +20,8 @@ export const useAnalytics = (period: string) => {
           max_score,
           student_id
         `)
-        .eq("period", period as any);
+        // Cast enum column to text to avoid Postgres operator mismatch
+        .eq("period::text" as any, period as any);
 
       if (gradesError) throw gradesError;
 
@@ -80,7 +81,8 @@ export const useTopStudents = (period: string, limit: number = 5) => {
             )
           )
         `)
-        .eq("period", period as any);
+        // Cast enum column to text to avoid Postgres operator mismatch
+        .eq("period::text" as any, period as any);
 
       if (error) throw error;
 
@@ -143,7 +145,8 @@ export const useAtRiskStudents = (period: string) => {
             )
           )
         `)
-        .eq("period", period as any);
+        // Cast enum column to text to avoid Postgres operator mismatch
+        .eq("period::text" as any, period as any);
 
       if (error) throw error;
 

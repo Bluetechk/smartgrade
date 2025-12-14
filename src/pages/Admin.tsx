@@ -25,7 +25,7 @@ const Admin = () => {
   const [activeTab, setActiveTab] = useState(initialTab);
   const { signOut } = useAuth();
   const { toast } = useToast();
-  const { users, usersLoading, assignRole, removeRole } = useUserManagement();
+  const { users, usersLoading, assignRole, removeRole, approveUser, disapproveUser } = useUserManagement();
 
   const [academicYearForm, setAcademicYearForm] = useState({
     year_name: "",
@@ -141,10 +141,10 @@ const Admin = () => {
                   <div className="space-y-4">
                     {users.map((user: any) => (
                       <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div>
+                        <div className="flex-1">
                           <p className="font-medium">{user.full_name}</p>
                           <p className="text-sm text-muted-foreground">{user.email}</p>
-                          <div className="flex gap-2 mt-2 flex-wrap">
+                          <div className="flex gap-2 mt-2 flex-wrap items-center">
                             {user.user_roles && user.user_roles.length > 0 ? (
                               user.user_roles.map((ur: any) => (
                                 <span key={ur.role} className="text-xs bg-primary/10 text-primary px-2 py-1 rounded flex items-center gap-1">
@@ -160,9 +160,34 @@ const Admin = () => {
                             ) : (
                               <span className="text-xs text-muted-foreground">No roles assigned</span>
                             )}
+                            <span className={`text-xs px-2 py-1 rounded ${user.is_approved ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
+                              {user.is_approved ? "✓ Approved" : "⏳ Pending"}
+                            </span>
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-col items-end">
+                          {!user.is_approved && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => approveUser.mutate({ userId: user.user_id })}
+                              disabled={approveUser.isPending}
+                              className="text-green-600 border-green-200 hover:bg-green-50"
+                            >
+                              {approveUser.isPending ? "Approving..." : "Approve"}
+                            </Button>
+                          )}
+                          {user.is_approved && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => disapproveUser.mutate({ userId: user.user_id })}
+                              disabled={disapproveUser.isPending}
+                              className="text-red-600 border-red-200 hover:bg-red-50"
+                            >
+                              {disapproveUser.isPending ? "Disapproving..." : "Disapprove"}
+                            </Button>
+                          )}
                           <Select onValueChange={(role) => assignRole.mutate({ userId: user.user_id, role })}>
                             <SelectTrigger className="w-[140px]">
                               <SelectValue placeholder="Add role" />

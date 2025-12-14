@@ -1,14 +1,35 @@
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { GraduationCap, LayoutDashboard, BookOpen, FileText, BarChart3 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { useLayoutContext } from "@/contexts/LayoutContext";
 
 const Navbar = () => {
   const location = useLocation();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const navigate = useNavigate();
+  const [isAdmin, setIsAdmin] = React.useState(false);
+  const layout = useLayoutContext();
+
+
+  React.useEffect(() => {
+    let mounted = true;
+    const fetchRoles = async () => {
+      if (!user) return setIsAdmin(false);
+      const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+      if (!mounted) return;
+      setIsAdmin(Array.isArray(data) && data.some((r: any) => r.role === "admin"));
+    };
+    fetchRoles();
+    return () => { mounted = false; };
+  }, [user]);
+
+  // If we're inside the AdminLayout and the user is an admin, don't render the global Navbar
+  if (layout?.insideAdminLayout && layout?.isAdmin) return null;
 
   const navItems = [
     { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -53,10 +74,10 @@ const Navbar = () => {
                   </Avatar>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent sideOffset={8}>
+                <DropdownMenuContent sideOffset={8}>
                 <DropdownMenuLabel>Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => { navigate('/admin'); }}>Admin Panel</DropdownMenuItem>
+                {isAdmin && <DropdownMenuItem onClick={() => { navigate('/admin'); }}>Admin Panel</DropdownMenuItem>}
                 <DropdownMenuItem onClick={() => { navigate('/auth'); }}>Profile</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={signOut}>Sign Out</DropdownMenuItem>

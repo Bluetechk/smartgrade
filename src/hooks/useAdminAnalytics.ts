@@ -91,7 +91,7 @@ export const useAdminAnalytics = (period?: string) => {
         ).map(([departmentName, count]) => ({ departmentName, count }));
 
         // Get grades for performance analysis
-        let gradesQuery = supabase
+        let gradesQuery: any = supabase
           .from("student_grades")
           .select(`
             score,
@@ -105,7 +105,8 @@ export const useAdminAnalytics = (period?: string) => {
           `);
 
         if (period) {
-          gradesQuery = gradesQuery.eq("period", period as any);
+          // Cast enum column to text to avoid Postgres operator mismatch
+          gradesQuery = gradesQuery.eq("period::text" as any, period as any);
         }
 
         const { data: grades, error: gradesError } = await gradesQuery;

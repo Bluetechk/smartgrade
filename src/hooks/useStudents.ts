@@ -1,9 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const useStudents = (classId?: string) => {
+  const { user } = useAuth();
+
   return useQuery({
-    queryKey: ["students", classId],
+    queryKey: ["students", classId, user?.id],
     queryFn: async () => {
       try {
         let query = supabase
@@ -12,7 +15,8 @@ export const useStudents = (classId?: string) => {
             *,
             classes:class_id (
               id,
-              name
+              name,
+              teacher_id
             ),
             departments:department_id (
               id,
@@ -23,6 +27,26 @@ export const useStudents = (classId?: string) => {
 
         if (classId) {
           query = query.eq("class_id", classId);
+        }
+
+        if (user) {
+          const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+          const isTeacher = Array.isArray(roles) && roles.some((r: any) => r.role === "teacher");
+          const isAdmin = Array.isArray(roles) && roles.some((r: any) => r.role === "admin");
+          // Only filter if teacher AND not admin. Admins see all students.
+          if (isTeacher && !isAdmin) {
+            // If no classId provided, only return students for classes where teacher_id = user.id
+            if (!classId) {
+              // Filter via related classes table
+              query = query.eq("classes.teacher_id", user.id);
+            } else {
+              // If classId provided, ensure that class belongs to this teacher; else return empty
+              const { data: cls } = await supabase.from("classes").select("teacher_id").eq("id", classId).single();
+              if (!cls || cls.teacher_id !== user.id) {
+                return [] as any[];
+              }
+            }
+          }
         }
 
         const { data, error } = await query;

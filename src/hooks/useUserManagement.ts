@@ -78,10 +78,72 @@ export const useUserManagement = () => {
     },
   });
 
+  // Approve user (set is_approved = true)
+  const approveUser = useMutation({
+    mutationFn: async ({ userId }: { userId: string }) => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ is_approved: true })
+        .eq("user_id", userId)
+        .select();
+
+      if (error) {
+        console.error("Approval error:", error);
+        throw error;
+      }
+      console.log("Approval successful:", data);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-users"] });
+      toast({ title: "User approved successfully" });
+    },
+    onError: (error: any) => {
+      console.error("Mutation error:", error);
+      toast({
+        title: "Error approving user",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Disapprove user (set is_approved = false)
+  const disapproveUser = useMutation({
+    mutationFn: async ({ userId }: { userId: string }) => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ is_approved: false })
+        .eq("user_id", userId)
+        .select();
+
+      if (error) {
+        console.error("Disapproval error:", error);
+        throw error;
+      }
+      console.log("Disapproval successful:", data);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-users"] });
+      toast({ title: "User disapproved" });
+    },
+    onError: (error: any) => {
+      console.error("Mutation error:", error);
+      toast({
+        title: "Error disapproving user",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     users,
     usersLoading,
     assignRole,
     removeRole,
+    approveUser,
+    disapproveUser,
   };
 };
