@@ -97,7 +97,10 @@ const Gradebook = () => {
   };
 
   const handleSaveGrades = () => {
-    const gradesToSave = [];
+    const gradesToSave: any[] = [];
+    const invalidGrades: any[] = [];
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
+
     for (const studentId in editedGrades) {
       for (const assessmentTypeId in editedGrades[studentId]) {
         const existingGrade = grades?.find(g => 
@@ -118,14 +121,31 @@ const Gradebook = () => {
           is_locked: isLocked,
         };
 
-        // Only include id if it exists (for updates)
         if (existingGrade?.id) {
           gradeData.id = existingGrade.id;
+        }
+
+        // Basic client-side validation before sending
+        const hasRequired = gradeData.student_id && gradeData.class_subject_id && gradeData.assessment_type_id;
+        const uuidsValid = uuidRegex.test(String(gradeData.student_id)) && uuidRegex.test(String(gradeData.class_subject_id)) && uuidRegex.test(String(gradeData.assessment_type_id));
+
+        if (!hasRequired || !uuidsValid) {
+          invalidGrades.push(gradeData);
+          continue;
         }
 
         gradesToSave.push(gradeData);
       }
     }
+
+    if (gradesToSave.length === 0) {
+      console.warn('[Gradebook] No valid grades to save. Invalid entries:', invalidGrades);
+      // Show user-friendly message
+      saveGradesMutation.reset();
+      return;
+    }
+
+    console.log('[Gradebook] Sending', gradesToSave.length, 'valid grades. Dropped', invalidGrades.length, 'invalid entries');
     saveGradesMutation.mutate(gradesToSave);
   };
 
@@ -186,7 +206,6 @@ const Gradebook = () => {
               ) : (
                 classSubjects.map((cs: any) => {
                   const subjectName = cs.subjects?.name || `Subject ${cs.id}`;
-                  console.log("[Gradebook Subject Dropdown] cs:", cs, "name:", subjectName);
                   return (
                     <SelectItem key={cs.id} value={cs.id}>
                       {subjectName}

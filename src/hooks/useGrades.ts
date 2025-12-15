@@ -45,10 +45,10 @@ export const useGrades = (classSubjectId?: string, period?: string) => {
 
       if (period) {
         // Cast enum column to text to avoid Postgres operator mismatch
-        query = query.eq("period::text" as any, period as any);
+        query = (query as any).eq("period::text", period);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await (query as any);
       if (error) throw error;
       return data;
     },
@@ -62,19 +62,73 @@ export const useSaveGrades = () => {
 
   return useMutation({
     mutationFn: async (grades: any[]) => {
-      const { data, error } = await supabase
-        .from("student_grades")
-        .upsert(grades, { onConflict: "id" })
-        .select();
+      console.log("[useSaveGrades] Saving grades:", grades.length, "records");
+      console.log("[useSaveGrades] Grade data sample:", JSON.stringify(grades[0], null, 2));
+      
+      // Use the database function to handle upsert with proper enum handling
+      // The supabase client expects the parameter to match the function signature
+      const { data, error } = await supabase.rpc('upsert_student_grades', {
+        p_grades: grades  // This will be automatically converted to JSONB by the client
+      });
 
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.error("[useSaveGrades] Error saving grades:", error);
+        const errAny = error as any;
+        console.error("[useSaveGrades] Error details:", {
+          message: errAny?.message ?? null,
+          status: errAny?.status ?? errAny?.statusCode ?? null,
+          code: errAny?.code ?? null,
+          details: errAny?.details ?? null,
+        });
+        throw error;
+      }
+
+      // Log and normalize results: RPC now returns aggregated totals (from student_period_totals), not individual assessments
+      const rows = (data as any[]) || [];
+      const savedRows = rows.filter(r => r && r.id);
+      const diagnosticRows = rows.filter(r => r && (!r.id || r.diagnostics)).map(r => ({ student_id: r.student_id, class_subject_id: r.class_subject_id, period: r.period, total_score: r.total_score, diagnostics: r.diagnostics }));
+
+      console.log("[useSaveGrades] Success! Saved", savedRows.length, "subject-period totals (aggregated from individual assessments)");
+      if (diagnosticRows.length > 0) console.warn("[useSaveGrades] RPC diagnostics:", diagnosticRows);
+
+      return rows;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["grades"] });
+    onSuccess: (data) => {
+      console.log("[useSaveGrades] RPC returned:", data);
+
+      // Interpret returned rows: diagnostic rows contain null id and `diagnostics` text
+      const rows = (data as any[]) || [];
+      const savedRows = rows.filter(r => r && r.id);
+      const diagnosticRows = rows.filter(r => r && (!r.id || r.diagnostics));
+
+      if (rows.length === 0) {
+        console.warn("[useSaveGrades] ⚠️ RPC returned empty array - no rows returned from function");
+        toast({
+          title: "Warning",
+          description: "Grades were sent but the server returned no rows. Check Supabase function deployment and logs.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (savedRows.length === 0) {
+        console.warn("[useSaveGrades] ⚠️ No aggregated totals saved. Diagnostic rows:", diagnosticRows);
+        toast({
+          title: "Warning",
+          description: "Grades were sent but none were saved. Check diagnostics in console for reasons (missing student/subject/assessment_type).",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Invalidate any query whose key starts with "grades" so views refresh
+      queryClient.invalidateQueries({
+        predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === "grades",
+      });
+      
       toast({
         title: "Success",
-        description: "Grades saved successfully",
+        description: `Grades saved successfully (${savedRows.length} subject-period totals, aggregated from assessments)`,
       });
     },
     onError: (error: any) => {

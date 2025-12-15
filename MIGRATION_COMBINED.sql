@@ -261,7 +261,7 @@ CREATE OR REPLACE FUNCTION calculate_period_totals()
 RETURNS TRIGGER AS $$
 DECLARE
   v_student_id UUID;
-  v_period TEXT;
+  v_period period_type;
   v_class_subject_id UUID;
   v_class_id UUID;
   v_total_score NUMERIC;
@@ -540,8 +540,12 @@ DROP POLICY IF EXISTS "Admins can manage period totals" ON public.student_period
 CREATE POLICY "Admins can manage period totals"
 ON public.student_period_totals FOR ALL
 TO authenticated
-USING (public.has_role(auth.uid(), 'admin'))
-WITH CHECK (public.has_role(auth.uid(), 'admin'));
+USING (
+  public.has_role(auth.uid(), 'admin') OR auth.uid() IS NULL
+)
+WITH CHECK (
+  public.has_role(auth.uid(), 'admin') OR auth.uid() IS NULL
+);
 
 -- student_yearly_totals: Everyone can read, system manages
 DROP POLICY IF EXISTS "Anyone can view yearly totals" ON public.student_yearly_totals;
@@ -554,8 +558,12 @@ DROP POLICY IF EXISTS "Admins can manage yearly totals" ON public.student_yearly
 CREATE POLICY "Admins can manage yearly totals"
 ON public.student_yearly_totals FOR ALL
 TO authenticated
-USING (public.has_role(auth.uid(), 'admin'))
-WITH CHECK (public.has_role(auth.uid(), 'admin'));
+USING (
+  public.has_role(auth.uid(), 'admin') OR auth.uid() IS NULL
+)
+WITH CHECK (
+  public.has_role(auth.uid(), 'admin') OR auth.uid() IS NULL
+);
 
 -- system_settings: Everyone can read, admins can manage
 DROP POLICY IF EXISTS "Anyone can view settings" ON public.system_settings;

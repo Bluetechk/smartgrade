@@ -69,10 +69,10 @@ export const useClassSubjects = (classId?: string) => {
           return [];
         }
 
-        // First, get the class and its department
+        // First, get the class with its department and teacher_id
         const { data: classData, error: classError } = await supabase
           .from("classes")
-          .select("id, department_id")
+          .select("id, department_id, teacher_id")
           .eq("id", classId)
           .single();
 
@@ -84,6 +84,24 @@ export const useClassSubjects = (classId?: string) => {
         }
 
         const departmentId = classData.department_id;
+
+        // Get user roles once
+        let isTeacher = false;
+        let isAdmin = false;
+        let isTeacherForThisClass = false;
+        
+        if (user) {
+          const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+          isTeacher = Array.isArray(roles) && roles.some((r: any) => r.role === "teacher");
+          isAdmin = Array.isArray(roles) && roles.some((r: any) => r.role === "admin");
+          console.log("[useClassSubjects] User roles:", { isTeacher, isAdmin });
+          
+          // Check if this teacher teaches the class (is the class teacher)
+          if (isTeacher && !isAdmin) {
+            isTeacherForThisClass = classData.teacher_id === user.id;
+            console.log("[useClassSubjects] Is teacher for this class:", isTeacherForThisClass, "class teacher_id:", classData.teacher_id, "user id:", user.id);
+          }
+        }
 
         // Now fetch subjects for this department and create class_subjects
         let query = supabase
@@ -103,15 +121,18 @@ export const useClassSubjects = (classId?: string) => {
           `)
           .eq("class_id", classId);
 
-        if (user) {
-          const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
-          const isTeacher = Array.isArray(roles) && roles.some((r: any) => r.role === "teacher");
-          const isAdmin = Array.isArray(roles) && roles.some((r: any) => r.role === "admin");
-          console.log("[useClassSubjects] User roles:", { isTeacher, isAdmin });
-          // Only filter if teacher AND not admin. Admins see all class_subjects.
-          if (isTeacher && !isAdmin) {
-            query = query.eq("teacher_id", user.id);
+        // For teachers: show all subjects for classes they teach, OR subjects specifically assigned to them
+        // For admins: show all subjects
+        if (isTeacher && !isAdmin) {
+          // Teachers see subjects if:
+          // 1. They are the class teacher (teach the whole class), OR
+          // 2. The subject is specifically assigned to them (teacher_id = user.id), OR
+          // 3. The subject has no teacher assigned (teacher_id IS NULL)
+          if (!isTeacherForThisClass) {
+            // Not the class teacher, only show subjects assigned to them or unassigned
+            query = query.or(`teacher_id.eq.${user.id},teacher_id.is.null`);
           }
+          // If they are the class teacher, no filter needed - they see all subjects
         }
 
         query = query.order("id");

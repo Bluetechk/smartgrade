@@ -210,19 +210,19 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="staff">
-            <StaffManagementTab />
+            {activeTab === "staff" && <StaffManagementTab />}
           </TabsContent>
 
           <TabsContent value="students">
-            <StudentManagementTab />
+            {activeTab === "students" && <StudentManagementTab />}
           </TabsContent>
 
           <TabsContent value="classes">
-            <ClassManagementTab />
+            {activeTab === "classes" && <ClassManagementTab />}
           </TabsContent>
 
           <TabsContent value="subjects">
-            <SubjectManagementTab />
+            {activeTab === "subjects" && <SubjectManagementTab />}
           </TabsContent>
 
           <TabsContent value="academic">
@@ -264,7 +264,7 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="departments">
-            <DepartmentManagementTab />
+            {activeTab === "departments" && <DepartmentManagementTab />}
           </TabsContent>
         </Tabs>
       </div>

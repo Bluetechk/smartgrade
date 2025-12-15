@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Home, Menu, ChevronLeft, BookOpen, FileText, BarChart3 } from "lucide-react";
+import { Home, Menu, ChevronLeft, BookOpen, FileText, BarChart3, Moon, Sun } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Drawer, DrawerTrigger, DrawerContent, DrawerOverlay, DrawerClose } from "@/components/ui/drawer";
 import { supabase } from "@/integrations/supabase/client";
 import { LayoutContext } from "@/contexts/LayoutContext";
+import { useTheme } from "next-themes";
 
 const SidebarLink = ({ to, label, icon: Icon, collapsed = false }: { to: string; label: string; icon: any; collapsed?: boolean }) => {
   const location = useLocation();
@@ -28,6 +29,12 @@ const TeacherLayout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   const avatarSrc = user?.user_metadata?.avatar_url || undefined;
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (user?.user_metadata?.full_name) {
@@ -39,7 +46,7 @@ const TeacherLayout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
 
   return (
     <LayoutContext.Provider value={{ insideAdminLayout: false, isAdmin: false }}>
-      <div className="min-h-screen flex bg-slate-50">
+      <div className="min-h-screen flex bg-slate-50 dark:bg-slate-900">
         {/* Mobile drawer trigger */}
         <div className="md:hidden fixed top-4 left-4 z-50">
           <button
@@ -57,7 +64,7 @@ const TeacherLayout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
             <span className="hidden" />
           </DrawerTrigger>
           <DrawerContent>
-            <div className="p-6 bg-green-800 min-h-screen text-slate-100">
+            <div className="p-6 bg-green-800 dark:bg-slate-900 min-h-screen text-slate-100">
               <div className="p-2">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-14 h-14">
@@ -89,8 +96,8 @@ const TeacherLayout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
           </DrawerContent>
         </Drawer>
 
-        <aside className={`${collapsed ? 'w-20' : 'w-72'} hidden md:flex flex-col bg-green-800 text-slate-100 shadow-lg transition-all duration-200 ease-in-out`}>
-          <div className="flex items-center justify-between p-4 border-b border-green-700/40">
+        <aside className={`${collapsed ? 'w-20' : 'w-72'} hidden md:flex flex-col bg-green-800 dark:bg-slate-900 text-slate-100 shadow-lg transition-all duration-200 ease-in-out`}>
+          <div className="flex items-center justify-between p-4 border-b border-green-700/40 dark:border-slate-800/40">
             <div className="flex items-center gap-3">
               <Avatar className={`${collapsed ? 'w-10 h-10' : 'w-14 h-14'}`}>
                 {avatarSrc ? (
@@ -111,7 +118,7 @@ const TeacherLayout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
               aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               aria-expanded={!collapsed}
               onClick={() => setCollapsed(!collapsed)}
-              className="p-2 rounded-md bg-green-700/30 text-slate-100 hover:bg-green-700/50"
+              className="p-2 rounded-md bg-green-700/30 dark:bg-slate-900/30 text-slate-100 hover:bg-green-700/50 dark:hover:bg-slate-900/50"
             >
               <ChevronLeft className={`w-5 h-5 transform transition-transform duration-200 ${collapsed ? 'rotate-180' : 'rotate-0'}`} />
             </button>
@@ -124,7 +131,7 @@ const TeacherLayout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
             <SidebarLink to="/analytics" label="Analytics" icon={BarChart3} collapsed={collapsed} />
           </nav>
 
-          <div className="p-4 border-t border-green-700/40">
+          <div className="p-4 border-t border-green-700/40 dark:border-slate-800/40">
             {!collapsed ? (
               <div className="text-xs text-green-200">SmartGrade • Teacher</div>
             ) : (
@@ -133,9 +140,18 @@ const TeacherLayout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
           </div>
         </aside>
 
-        <div className="flex-1">
-          <div className="md:pl-0">
-            <main className="p-6">{children}</main>
+        <div className="flex-1 bg-slate-50 dark:bg-slate-900">
+          <div className="md:pl-0 min-h-screen">
+            <div className="flex justify-end p-4 md:p-6">
+              <button
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                aria-label="Toggle theme"
+              >
+                {mounted && theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+            </div>
+            <main className="p-6 pt-0">{children}</main>
           </div>
         </div>
       </div>

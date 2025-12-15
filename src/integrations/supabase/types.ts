@@ -536,6 +536,23 @@ export type Database = {
         }
         Returns: boolean
       }
+      upsert_student_grades: {
+        Args: {
+          p_grades: Json
+        }
+        Returns: {
+          id: string
+          student_id: string
+          class_subject_id: string
+          period: Database["public"]["Enums"]["period_type"]
+          assessment_type_id: string
+          score: number
+          max_score: number
+          is_locked: boolean
+          created_at: string
+          updated_at: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "teacher" | "student" | "parent"

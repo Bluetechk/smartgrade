@@ -28,12 +28,17 @@ const Dashboard = () => {
   const { data: stats, isLoading } = useDashboardStats();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [isTeacher, setIsTeacher] = useState(false);
+  const [isTeacher, setIsTeacher] = useState<boolean | null>(null); // null = loading, true/false = determined
+  const [roleLoading, setRoleLoading] = useState(true);
 
   // Check if user is teacher
   useEffect(() => {
     const checkRole = async () => {
-      if (!user) return;
+      if (!user) {
+        setIsTeacher(false);
+        setRoleLoading(false);
+        return;
+      }
       try {
         const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
         const roles = Array.isArray(data) ? data.map((r: any) => r.role) : [];
@@ -41,6 +46,8 @@ const Dashboard = () => {
       } catch (err) {
         console.error("Error fetching user role:", err);
         setIsTeacher(false);
+      } finally {
+        setRoleLoading(false);
       }
     };
     checkRole();
@@ -264,16 +271,16 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950">
       <Navbar />
       
-      <main className="p-8">
+      <main className="p-8 dark:text-slate-100">
         <div className="max-w-7xl mx-auto">
           {/* Header with Export and Add Student */}
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 mb-2">Dashboard</h1>
-              <p className="text-slate-600">Welcome back to Udemy Inter. school</p>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Dashboard</h1>
+              <p className="text-slate-600 dark:text-slate-400">Welcome back to Udemy Inter. school</p>
             </div>
             <div className="flex gap-3">
               <Button 
@@ -312,18 +319,18 @@ const Dashboard = () => {
                 statItems.map((stat) => {
                   const Icon = stat.icon;
                   return (
-                    <Card key={stat.label} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                    <Card key={stat.label} className="border-0 shadow-sm hover:shadow-md transition-shadow dark:bg-slate-900 dark:border-slate-800">
                       <CardContent className="pt-6">
                         <div className="flex justify-between items-start mb-4">
                           <div>
-                            <p className="text-slate-600 text-sm font-medium mb-1">{stat.label}</p>
-                            <p className="text-3xl font-bold text-slate-900">{stat.value}</p>
+                            <p className="text-slate-600 dark:text-slate-400 text-sm font-medium mb-1">{stat.label}</p>
+                            <p className="text-3xl font-bold text-slate-900 dark:text-white">{stat.value}</p>
                           </div>
                           <div className={`${stat.bgColor} p-3 rounded-lg`}>
                             <Icon className={`w-6 h-6 ${stat.color}`} />
                           </div>
                         </div>
-                        <p className="text-xs text-slate-500 flex items-center gap-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
                           <ArrowUpRight className="w-3 h-3 text-green-600" />
                           {stat.trend}
                         </p>
@@ -340,13 +347,23 @@ const Dashboard = () => {
             {/* Students List */}
             <div className="lg:col-span-2">
               {/* If teacher: show Quick Edit; else show Recent Students list */}
-              {isTeacher ? (
-                <Card className="border-0 shadow-sm">
-                  <CardHeader className="pb-4 border-b border-slate-100">
+              {roleLoading ? (
+                <Card className="border-0 shadow-sm dark:bg-slate-900 dark:border-slate-800">
+                  <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-700">
+                    <Skeleton className="h-6 w-32 mb-2" />
+                    <Skeleton className="h-4 w-64" />
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <Skeleton className="h-64 w-full" />
+                  </CardContent>
+                </Card>
+              ) : isTeacher ? (
+                <Card className="border-0 shadow-sm dark:bg-slate-900 dark:border-slate-800">
+                  <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-700">
                     <div className="flex justify-between items-center">
                       <div>
-                        <CardTitle className="text-lg text-slate-900">Quick Edit</CardTitle>
-                        <CardDescription className="text-slate-600 mt-1">
+                        <CardTitle className="text-lg text-slate-900 dark:text-white">Quick Edit</CardTitle>
+                        <CardDescription className="text-slate-600 dark:text-slate-400 mt-1">
                           Quickly search students and update a score without opening the gradebook
                         </CardDescription>
                       </div>
@@ -357,26 +374,26 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
               ) : (
-                <Card className="border-0 shadow-sm">
-                  <CardHeader className="pb-4 border-b border-slate-100">
+                <Card className="border-0 shadow-sm dark:bg-slate-900 dark:border-slate-800">
+                  <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-700">
                     <div className="flex justify-between items-center">
                       <div>
-                        <CardTitle className="text-lg text-slate-900">Recent Students</CardTitle>
-                        <CardDescription className="text-slate-600 mt-1">
+                        <CardTitle className="text-lg text-slate-900 dark:text-white">Recent Students</CardTitle>
+                        <CardDescription className="text-slate-600 dark:text-slate-400 mt-1">
                           Latest enrolled students in your school
                         </CardDescription>
                       </div>
                       <input 
                         type="text" 
                         placeholder="Search for a student by name or email"
-                        className="hidden md:block px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-400"
+                        className="hidden md:block px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm text-slate-700 dark:text-slate-200 dark:bg-slate-900 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-400"
                       />
                     </div>
                   </CardHeader>
                   <CardContent className="pt-6">
                     <div className="space-y-3">
                       {/* Table Header */}
-                      <div className="grid grid-cols-5 gap-4 text-sm font-semibold text-slate-700 px-4 py-2 bg-slate-50 rounded">
+                      <div className="grid grid-cols-5 gap-4 text-sm font-semibold text-slate-700 dark:text-slate-300 px-4 py-2 bg-slate-50 dark:bg-slate-900 rounded">
                         <div>Student ID</div>
                         <div>Email address</div>
                         <div>Class</div>
@@ -388,14 +405,14 @@ const Dashboard = () => {
                       {recentStudents.map((student) => (
                         <div 
                           key={student.id}
-                          className="grid grid-cols-5 gap-4 items-center px-4 py-3 rounded hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-200"
+                          className="grid grid-cols-5 gap-4 items-center px-4 py-3 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-600"
                         >
-                          <div className="text-sm font-medium text-slate-900">{student.id}</div>
-                          <div className="text-sm text-slate-600">{student.name.toLowerCase().replace(" ", ".")}@example.com</div>
-                          <div className="text-sm text-slate-600">{student.class}</div>
-                          <div className="text-sm text-slate-600">Female</div>
+                          <div className="text-sm font-medium text-slate-900 dark:text-slate-200">{student.id}</div>
+                          <div className="text-sm text-slate-600 dark:text-slate-400">{student.name.toLowerCase().replace(" ", ".")}@example.com</div>
+                          <div className="text-sm text-slate-600 dark:text-slate-400">{student.class}</div>
+                          <div className="text-sm text-slate-600 dark:text-slate-400">Female</div>
                           <div className="text-right">
-                            <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">Edit</button>
+                            <button className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium">Edit</button>
                           </div>
                         </div>
                       ))}
@@ -408,26 +425,26 @@ const Dashboard = () => {
             {/* Right Sidebar */}
             <div className="space-y-6">
               {/* Student Profile Card */}
-              <Card className="border-0 shadow-sm">
+                <Card className="border-0 shadow-sm dark:bg-slate-900 dark:border-slate-800">
                 <CardContent className="pt-6">
                   <div className="text-center">
-                    <Avatar className="w-24 h-24 mx-auto mb-4 border-4 border-blue-100">
+                    <Avatar className="w-24 h-24 mx-auto mb-4 border-4 border-blue-100 dark:border-blue-900">
                       <AvatarImage src="/api/placeholder/96/96" />
-                      <AvatarFallback className="bg-blue-100 text-blue-600 text-lg font-semibold">CF</AvatarFallback>
+                      <AvatarFallback className="bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 text-lg font-semibold">CF</AvatarFallback>
                     </Avatar>
-                    <h3 className="text-xl font-bold text-slate-900 mb-1">Cody Fisher</h3>
-                    <p className="text-slate-600 text-sm mb-4">Science Student</p>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">Cody Fisher</h3>
+                    <p className="text-slate-600 dark:text-slate-400 text-sm mb-4">Science Student</p>
                     <div className="space-y-2 mb-6 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-slate-600">Gender:</span>
-                        <span className="font-medium text-slate-900">Female</span>
+                        <span className="text-slate-600 dark:text-slate-400">Gender:</span>
+                        <span className="font-medium text-slate-900 dark:text-white">Female</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-600">Age:</span>
-                        <span className="font-medium text-slate-900">17</span>
+                        <span className="text-slate-600 dark:text-slate-400">Age:</span>
+                        <span className="font-medium text-slate-900 dark:text-white">17</span>
                       </div>
                     </div>
-                    <p className="text-xs text-slate-500 mb-4">People from the same class</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">People from the same class</p>
                     <div className="flex justify-center gap-2 mb-6">
                       {Array(4).fill(0).map((_, i) => (
                         <Avatar key={i} className="w-8 h-8 border-2 border-white">
@@ -442,24 +459,24 @@ const Dashboard = () => {
               </Card>
 
               {/* About Section */}
-              <Card className="border-0 shadow-sm">
+              <Card className="border-0 shadow-sm dark:bg-slate-900 dark:border-slate-800">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base text-slate-900">About</CardTitle>
+                  <CardTitle className="text-base text-slate-900 dark:text-white">About</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
                   <div>
-                    <p className="text-slate-600 mb-1">Gender</p>
-                    <Badge variant="outline" className="bg-slate-50">Female</Badge>
+                    <p className="text-slate-600 dark:text-slate-400 mb-1">Gender</p>
+                    <Badge variant="outline" className="bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:border-slate-700">Female</Badge>
                   </div>
                   <div>
-                    <p className="text-slate-600 mb-1">Age</p>
-                    <p className="font-medium text-slate-900">17 years old</p>
+                    <p className="text-slate-600 dark:text-slate-400 mb-1">Age</p>
+                    <p className="font-medium text-slate-900 dark:text-white">17 years old</p>
                   </div>
                   <div className="flex gap-3 pt-2">
-                    <button className="flex-1 px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded text-slate-700 text-xs font-medium transition-colors">
+                    <button className="flex-1 px-3 py-2 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 rounded text-slate-700 dark:text-slate-200 text-xs font-medium transition-colors">
                       💬
                     </button>
-                    <button className="flex-1 px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded text-slate-700 text-xs font-medium transition-colors">
+                    <button className="flex-1 px-3 py-2 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 rounded text-slate-700 dark:text-slate-200 text-xs font-medium transition-colors">
                       ✉️
                     </button>
                   </div>
